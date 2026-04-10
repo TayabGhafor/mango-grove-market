@@ -1,8 +1,9 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { getOrders, getProducts, getUsers, loginAdmin, Order, Product, updateOrderStatus, User } from "./api";
+import { createProduct, deleteProduct, getOrders, getProducts, getUsers, getSupabase, loginAdmin, Order, Product, ProductPayload, updateOrderStatus, updateProduct, User } from "./api";
 
-const orderStatuses = ["pending", "processed", "dispatched", "out-for-delivery", "delivered"];
+const orderStatuses = ["pending", "processed", "dispatched", "out-for-delivery", "delivered", "cancelled"];
 const sessionKey = "mango-grove-admin-session";
 
 export function App() {
@@ -23,6 +24,34 @@ export function App() {
   const [activeTab, setActiveTab] = useState<"dashboard" | "products" | "orders" | "users">("dashboard");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [productDraft, setProductDraft] = useState<ProductPayload | null>(null);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+
+  const createEmptyProduct = (): ProductPayload => ({
+    title: "",
+    description: "",
+    images: ["", ""],
+    category: "",
+    basePrice: 0,
+    weights: [
+      { label: "3 KG", kg: 3, price: 0 },
+      { label: "5 KG", kg: 5, price: 0 },
+      { label: "8 KG", kg: 8, price: 0 },
+    ],
+    rating: 0,
+    reviews: 0,
+    trending: false,
+    active: true,
+  });
+
+  const isValidUrl = (value: string) => {
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
 
   const dashboardData = useMemo(() => {
     const byDay = new Map<string, { name: string; orders: number; revenue: number }>();
@@ -60,6 +89,50 @@ export function App() {
     refresh(token);
   }, [refresh, token]);
 
+  useEffect(() => {
+    if (!token) return;
+    let productsChannel: RealtimeChannel | null = null;
+    let ordersChannel: RealtimeChannel | null = null;
+    let profilesChannel: RealtimeChannel | null = null;
+    try {
+      const supabase = getSupabase();
+      productsChannel = supabase
+        .channel("admin:products")
+        .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
+          void refresh(token);
+        })
+        .subscribe();
+
+      ordersChannel = supabase
+        .channel("admin:orders")
+        .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
+          void refresh(token);
+        })
+        .subscribe();
+
+      profilesChannel = supabase
+        .channel("admin:profiles")
+        .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
+          void refresh(token);
+        })
+        .subscribe();
+    } catch (subscribeError) {
+      setError(subscribeError instanceof Error ? subscribeError.message : "Supabase configuration is missing.");
+      return;
+    }
+
+    return () => {
+      try {
+        const supabase = getSupabase();
+        if (productsChannel) void supabase.removeChannel(productsChannel);
+        if (ordersChannel) void supabase.removeChannel(ordersChannel);
+        if (profilesChannel) void supabase.removeChannel(profilesChannel);
+      } catch {
+        return;
+      }
+    };
+  }, [refresh, token]);
+
   const handleLogin = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
@@ -86,7 +159,105 @@ export function App() {
     }
   };
 
+  const startCreateProduct = () => {
+    setEditingProductId(null);
+    setProductDraft(createEmptyProduct());
+  };
+
+  const startEditProduct = (product: Product) => {
+    setEditingProductId(product._id);
+    setProductDraft({
+      title: product.title,
+      description: product.description,
+      images: product.images.length >= 2 ? product.images : ["", ""],
+      category: product.category,
+      basePrice: product.basePrice,
+      weights: product.weights,
+      rating: product.rating,
+      reviews: product.reviews,
+      trending: product.trending,
+      deal: product.deal,
+      active: product.active,
+    });
+  };
+
+  const cancelProductEdit = () => {
+    setEditingProductId(null);
+    setProductDraft(null);
+  };
+
+  const saveProduct = async () => {
+    if (!productDraft) return;
+    setLoading(true);
+    setError("");
+    try {
+      const cleanedImages = productDraft.images.map((value) => value.trim()).filter(Boolean);
+      if (productDraft.title.trim().length < 2) throw new Error("Product title must be at least 2 characters.");
+      if (productDraft.description.trim().length < 20) throw new Error("Product description must be at least 20 characters.");
+      if (productDraft.category.trim().length < 2) throw new Error("Product category must be at least 2 characters.");
+      if (cleanedImages.length < 2) throw new Error("Provide at least 2 image URLs.");
+      if (cleanedImages.some((url) => !isValidUrl(url))) throw new Error("All image URLs must be valid http(s) links.");
+      if (productDraft.weights.some((w) => Number.isNaN(w.price) || w.price <= 0)) throw new Error("Weight prices must be greater than 0.");
+
+      const payload: ProductPayload = {
+        ...productDraft,
+        title: productDraft.title.trim(),
+        description: productDraft.description.trim(),
+        category: productDraft.category.trim(),
+        images: cleanedImages.slice(0, 5),
+        basePrice: Number(productDraft.basePrice) || 0,
+        weights: productDraft.weights.map((w) => ({ ...w, price: Number(w.price) || 0 })),
+        rating: Number(productDraft.rating) || 0,
+        reviews: Number(productDraft.reviews) || 0,
+      };
+
+      const dealLabel = payload.deal?.label?.trim() ?? "";
+      const dealDiscount = payload.deal?.discount ?? 0;
+      if (dealLabel && (dealDiscount <= 0 || dealDiscount > 90)) {
+        throw new Error("Deal discount must be between 1 and 90.");
+      }
+      payload.deal = dealLabel ? { label: dealLabel, discount: dealDiscount } : undefined;
+
+      const result = editingProductId
+        ? await updateProduct(token, editingProductId, payload)
+        : await createProduct(token, payload);
+
+      setProducts((current) => {
+        const existingIndex = current.findIndex((p) => p._id === result.product._id);
+        if (existingIndex === -1) return [result.product, ...current];
+        const next = [...current];
+        next[existingIndex] = result.product;
+        return next;
+      });
+
+      cancelProductEdit();
+    } catch (productError) {
+      setError(productError instanceof Error ? productError.message : "Unable to save product.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeProduct = async (productId: string) => {
+    if (!window.confirm("Hide this product?")) return;
+    setLoading(true);
+    setError("");
+    try {
+      await deleteProduct(token, productId);
+      setProducts((current) => current.filter((p) => p._id !== productId));
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Unable to delete product.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
+    try {
+      void getSupabase().auth.signOut();
+    } catch {
+      return;
+    }
     sessionStorage.removeItem(sessionKey);
     setToken("");
     setProducts([]);
@@ -173,7 +344,200 @@ export function App() {
 
       {activeTab === "products" && (
         <section className="table-panel">
-          <h2>Products</h2>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <h2>Products</h2>
+            <button type="button" className="secondary-button" onClick={startCreateProduct}>Add product</button>
+          </div>
+
+          {productDraft && (
+            <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
+              <p className="muted" style={{ margin: 0, maxWidth: "none" }}>
+                {editingProductId ? "Edit product" : "Create product"}
+              </p>
+
+              <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+                <label>
+                  Title
+                  <input
+                    value={productDraft.title}
+                    onChange={(event) => setProductDraft({ ...productDraft, title: event.target.value })}
+                    required
+                    minLength={2}
+                  />
+                </label>
+                <label>
+                  Category
+                  <input
+                    value={productDraft.category}
+                    onChange={(event) => setProductDraft({ ...productDraft, category: event.target.value })}
+                    required
+                    minLength={2}
+                  />
+                </label>
+                <label>
+                  Base price
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    value={productDraft.basePrice || ""}
+                    onChange={(event) => setProductDraft({ ...productDraft, basePrice: Number(event.target.value) })}
+                    required
+                  />
+                </label>
+                <label>
+                  Reviews
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    value={productDraft.reviews || 0}
+                    onChange={(event) => setProductDraft({ ...productDraft, reviews: Number(event.target.value) })}
+                  />
+                </label>
+                <label>
+                  Rating
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    max={5}
+                    step={0.1}
+                    value={productDraft.rating || 0}
+                    onChange={(event) => setProductDraft({ ...productDraft, rating: Number(event.target.value) })}
+                  />
+                </label>
+              </div>
+
+              <label>
+                Description
+                <textarea
+                  value={productDraft.description}
+                  onChange={(event) => setProductDraft({ ...productDraft, description: event.target.value })}
+                  required
+                  minLength={20}
+                />
+              </label>
+
+              <div style={{ display: "grid", gap: 12 }}>
+                <p className="muted" style={{ margin: 0, maxWidth: "none" }}>Images (2 to 5 URLs)</p>
+                {productDraft.images.map((value, index) => (
+                  <label key={index}>
+                    Image URL {index + 1}
+                    <input
+                      value={value}
+                      onChange={(event) => {
+                        const next = [...productDraft.images];
+                        next[index] = event.target.value;
+                        setProductDraft({ ...productDraft, images: next });
+                      }}
+                      required={index < 2}
+                    />
+                  </label>
+                ))}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => productDraft.images.length < 5 && setProductDraft({ ...productDraft, images: [...productDraft.images, ""] })}
+                    disabled={productDraft.images.length >= 5}
+                  >
+                    Add image
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => productDraft.images.length > 2 && setProductDraft({ ...productDraft, images: productDraft.images.slice(0, -1) })}
+                    disabled={productDraft.images.length <= 2}
+                  >
+                    Remove last
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gap: 12 }}>
+                <p className="muted" style={{ margin: 0, maxWidth: "none" }}>Weights (required)</p>
+                <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                  {productDraft.weights.map((weight) => (
+                    <label key={weight.kg}>
+                      {weight.label} price
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        value={weight.price || ""}
+                        onChange={(event) => {
+                          const nextWeights = productDraft.weights.map((entry) =>
+                            entry.kg === weight.kg ? { ...entry, price: Number(event.target.value) } : entry,
+                          );
+                          setProductDraft({ ...productDraft, weights: nextWeights });
+                        }}
+                        required
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+                <label>
+                  Deal label (optional)
+                  <input
+                    value={productDraft.deal?.label ?? ""}
+                    onChange={(event) => setProductDraft({
+                      ...productDraft,
+                      deal: { label: event.target.value, discount: productDraft.deal?.discount ?? 0 },
+                    })}
+                  />
+                </label>
+                <label>
+                  Deal discount %
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={90}
+                    value={productDraft.deal?.discount ?? 0}
+                    onChange={(event) => setProductDraft({
+                      ...productDraft,
+                      deal: { label: productDraft.deal?.label ?? "", discount: Number(event.target.value) },
+                    })}
+                  />
+                </label>
+              </div>
+
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700 }}>
+                  <input
+                    type="checkbox"
+                    checked={productDraft.trending}
+                    onChange={(event) => setProductDraft({ ...productDraft, trending: event.target.checked })}
+                    style={{ width: "auto" }}
+                  />
+                  Trending
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700 }}>
+                  <input
+                    type="checkbox"
+                    checked={productDraft.active}
+                    onChange={(event) => setProductDraft({ ...productDraft, active: event.target.checked })}
+                    style={{ width: "auto" }}
+                  />
+                  Active
+                </label>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button type="button" onClick={saveProduct} disabled={loading}>
+                  {loading ? "Saving..." : "Save product"}
+                </button>
+                <button type="button" className="secondary-button" onClick={cancelProductEdit} disabled={loading}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
           <table>
             <thead>
               <tr>
@@ -181,6 +545,7 @@ export function App() {
                 <th>Category</th>
                 <th>Base price</th>
                 <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -190,6 +555,12 @@ export function App() {
                   <td>{product.category}</td>
                   <td>Rs. {product.basePrice.toLocaleString()}</td>
                   <td>{product.active ? "Active" : "Hidden"}</td>
+                  <td>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button type="button" className="secondary-button" onClick={() => startEditProduct(product)}>Edit</button>
+                      <button type="button" className="secondary-button" onClick={() => removeProduct(product._id)} disabled={loading}>Hide</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

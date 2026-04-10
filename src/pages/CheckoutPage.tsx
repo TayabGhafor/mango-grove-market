@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CreditCard, Banknote, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { PaymentDetails, PaymentMethod, validateCheckout } from "@/lib/checkoutValidation";
+import { createOrder } from "@/lib/apiClient";
 
 const paymentMethods = [
   { id: "cod", label: "Cash on Delivery", icon: Banknote },
@@ -125,21 +127,41 @@ const PaymentDetailFields = ({
 
 const CheckoutPage = () => {
   const { items, total, clearCart } = useCart();
+  const { user, profile, updateProfile } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: "", address: "", phone: "" });
   const [payment, setPayment] = useState<PaymentMethod>("cod");
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>(initialPaymentDetails);
   const [loading, setLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
-  if (items.length === 0) {
+  const hasItems = items.length > 0;
+  useEffect(() => {
+    if (hasItems) return;
     navigate("/cart");
-    return null;
-  }
+  }, [hasItems, navigate]);
+
+  useEffect(() => {
+    if (!profile || hydrated) return;
+    setForm({
+      name: profile.name ?? "",
+      address: profile.address ?? "",
+      phone: profile.phone ?? "",
+    });
+    setHydrated(true);
+  }, [hydrated, profile]);
+
+  if (!hasItems) return null;
 
   const delivery = total >= 2000 ? 0 : 200;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      navigate("/login?next=%2Fcheckout");
+      return;
+    }
+
     const result = validateCheckout({ form, payment, paymentDetails });
     if (!result.success) {
       toast({
@@ -151,12 +173,65 @@ const CheckoutPage = () => {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      clearCart();
-      toast({ title: "Order placed! 🎉", description: "Your mangoes are on the way." });
-      navigate("/orders");
-      setLoading(false);
-    }, 1500);
+    const orderItems = items.map((item) => ({
+      productId: item.product.id,
+      title: item.product.title,
+      image: item.product.images[0] ?? "",
+      weight: {
+        label: item.weight.label,
+        kg: item.weight.kg as 3 | 5 | 8,
+        price: item.weight.price,
+      },
+      quantity: item.quantity,
+    }));
+
+    const paymentPayload = payment === "card"
+      ? {
+          method: "card" as const,
+          verified: true,
+          reference: "test-card",
+          deliveryFee: delivery,
+        }
+      : payment === "easypaisa" || payment === "jazzcash"
+        ? {
+            method: payment,
+            verified: true,
+            reference: (paymentDetails.transactionId ?? "").trim(),
+            deliveryFee: delivery,
+          }
+        : { method: "cod" as const, verified: true, deliveryFee: delivery };
+
+    const payload = {
+      items: orderItems,
+      customer: {
+        name: form.name.trim(),
+        address: form.address.trim(),
+        phone: form.phone.trim(),
+      },
+      payment: paymentPayload,
+      total: total + delivery,
+    };
+
+    updateProfile({
+      name: payload.customer.name,
+      address: payload.customer.address,
+      phone: payload.customer.phone,
+    })
+      .catch(() => undefined)
+      .then(() => createOrder(payload))
+      .then(() => {
+        clearCart();
+        toast({ title: "Order placed! 🎉", description: "Your mangoes are on the way." });
+        navigate("/orders");
+      })
+      .catch((error) => {
+        toast({
+          title: "Order failed",
+          description: error instanceof Error ? error.message : "Unable to place order.",
+          variant: "destructive",
+        });
+      })
+      .finally(() => setLoading(false));
   };
 
   return (
@@ -198,6 +273,11 @@ const CheckoutPage = () => {
             ))}
           </div>
           <PaymentDetailFields payment={payment} details={paymentDetails} onChange={setPaymentDetails} />
+          {!user && (
+            <p className="text-sm text-muted-foreground">
+              You&apos;ll be asked to sign in before placing the order.
+            </p>
+          )}
         </div>
 
         <div className="bg-card rounded-xl p-6 border border-border">

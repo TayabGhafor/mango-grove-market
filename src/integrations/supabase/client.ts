@@ -2,8 +2,30 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const envProjectRef = import.meta.env.VITE_SUPABASE_PROJECT_REF ?? import.meta.env.VITE_SUPABASE_REF ?? "";
+const envUrl = import.meta.env.VITE_SUPABASE_URL ?? "";
+const envPublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
+const envAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
+const SUPABASE_PUBLISHABLE_KEY = envPublishableKey || envAnonKey;
+
+const decodeBase64Url = (value: string) => {
+  const padded = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  return atob(padded);
+};
+
+const deriveProjectRefFromJwt = (jwt: string) => {
+  const parts = jwt.split(".");
+  if (parts.length < 2) return "";
+  try {
+    const payload = JSON.parse(decodeBase64Url(parts[1])) as { ref?: string };
+    return typeof payload.ref === "string" ? payload.ref : "";
+  } catch {
+    return "";
+  }
+};
+
+const projectRef = envProjectRef || deriveProjectRefFromJwt(envAnonKey || SUPABASE_PUBLISHABLE_KEY);
+const SUPABASE_URL = envUrl || (projectRef ? `https://${projectRef}.supabase.co` : "");
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

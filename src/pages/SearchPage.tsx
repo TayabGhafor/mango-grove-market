@@ -1,19 +1,46 @@
-import { useState, useMemo } from "react";
-import { products } from "@/data/products";
+import { useEffect, useMemo, useState } from "react";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { mockProducts } from "@/data/products";
 import ProductCard from "@/components/ProductCard";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { fetchProducts, toStorefrontProduct } from "@/lib/apiClient";
+import { supabase } from "@/integrations/supabase/client";
 
 const SearchPage = () => {
   const [query, setQuery] = useState("");
+  const queryClient = useQueryClient();
+
+  const trimmed = query.trim();
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["products", "search", trimmed],
+    queryFn: () => fetchProducts(trimmed ? { q: trimmed } : undefined),
+    placeholderData: keepPreviousData,
+  });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("products:search")
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["products"], exact: false });
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  const apiResults = (data?.products ?? []).map(toStorefrontProduct);
 
   const results = useMemo(() => {
-    if (!query.trim()) return products;
-    const q = query.toLowerCase();
-    return products.filter(
-      (p) => p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)
+    if (!isError && apiResults.length > 0) return apiResults;
+    if (!trimmed) return mockProducts;
+    const q = trimmed.toLowerCase();
+    return mockProducts.filter(
+      (p) => p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q) || p.category.toLowerCase().includes(q),
     );
-  }, [query]);
+  }, [apiResults, isError, trimmed]);
 
   return (
     <div className="container mx-auto px-4 py-10">
@@ -27,6 +54,7 @@ const SearchPage = () => {
           className="pl-10"
         />
       </div>
+      {isLoading && <p className="text-sm text-muted-foreground mb-4">Searching...</p>}
       {results.length === 0 ? (
         <p className="text-muted-foreground">No mangoes found for "{query}"</p>
       ) : (

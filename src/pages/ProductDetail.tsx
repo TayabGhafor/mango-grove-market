@@ -1,19 +1,56 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { products } from "@/data/products";
+import type { Product } from "@/data/products";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { mockProducts } from "@/data/products";
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Star, Minus, Plus, ShoppingCart, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
+import { fetchProduct, toStorefrontProduct } from "@/lib/apiClient";
+import { supabase } from "@/integrations/supabase/client";
 
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToCart } = useCart();
-  const product = products.find((p) => p.id === id);
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["product", id],
+    queryFn: () => fetchProduct(id as string),
+    enabled: Boolean(id),
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`product:${id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `id=eq.${id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["product", id] });
+        queryClient.invalidateQueries({ queryKey: ["products"], exact: false });
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [id, queryClient]);
+
+  const cached = (location.state as { product?: Product } | null)?.product;
+  const product = data ? toStorefrontProduct(data.product) : cached ?? mockProducts.find((p) => p.id === id);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedWeight, setSelectedWeight] = useState(0);
   const [quantity, setQuantity] = useState(1);
+
+  if (isLoading && !product) {
+    return (
+      <div className="container mx-auto px-4 py-20">
+        <p className="text-muted-foreground">Loading product...</p>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -34,7 +71,13 @@ const ProductDetail = () => {
       <div className="grid md:grid-cols-2 gap-10">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <div className="aspect-square rounded-2xl overflow-hidden bg-muted mb-3">
-            <img src={product.images[selectedImage]} alt={product.title} className="w-full h-full object-cover" />
+            <img
+              src={product.images[selectedImage]}
+              alt={product.title}
+              className="w-full h-full object-cover"
+              decoding="async"
+              fetchPriority="high"
+            />
           </div>
           <div className="flex gap-2">
             {product.images.map((img, i) => (
@@ -43,7 +86,7 @@ const ProductDetail = () => {
                 onClick={() => setSelectedImage(i)}
                 className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${i === selectedImage ? "border-primary" : "border-border"}`}
               >
-                <img src={img} alt="" className="w-full h-full object-cover" />
+                <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               </button>
             ))}
           </div>

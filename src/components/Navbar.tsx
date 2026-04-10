@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom";
 import { ShoppingCart, Search, Menu, X } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const Navbar = () => {
   const { itemCount } = useCart();
+  const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -21,6 +23,7 @@ const Navbar = () => {
           <Link to="/" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors">Home</Link>
           <Link to="/products" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors">Shop</Link>
           <Link to="/orders" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors">My Orders</Link>
+          {user && <Link to="/profile" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors">Profile</Link>}
         </div>
 
         <div className="hidden md:flex items-center gap-3">
@@ -35,6 +38,19 @@ const Navbar = () => {
               </span>
             )}
           </Link>
+          {user ? (
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors px-2"
+            >
+              Sign out
+            </button>
+          ) : (
+            <Link to="/login" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors px-2">
+              Sign in
+            </Link>
+          )}
         </div>
 
         {/* Mobile */}
@@ -66,6 +82,21 @@ const Navbar = () => {
               <Link to="/products" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium">Shop</Link>
               <Link to="/search" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium">Search</Link>
               <Link to="/orders" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium">My Orders</Link>
+              {user && <Link to="/profile" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium">Profile</Link>}
+              {user ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    void logout();
+                  }}
+                  className="py-2 text-sm font-medium text-left"
+                >
+                  Sign out
+                </button>
+              ) : (
+                <Link to="/login" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium">Sign in</Link>
+              )}
             </div>
           </motion.div>
         )}

@@ -22,7 +22,7 @@ export interface Order {
   id: string;
   items: CartItem[];
   total: number;
-  status: 'pending' | 'processed' | 'dispatched' | 'out-for-delivery' | 'delivered';
+  status: 'pending' | 'processed' | 'dispatched' | 'out-for-delivery' | 'delivered' | 'cancelled';
   customer: { name: string; address: string; phone: string };
   paymentMethod: string;
   date: string;
@@ -147,6 +147,8 @@ export const products: Product[] = [
     deal: { discount: 20, label: "Best Seller" },
   },
 ];
+
+export const mockProducts = products;
 
 export const reviews = [
   { id: "1", name: "Ahmed K.", rating: 5, text: "Best mangoes I've ever ordered online! Fresh, sweet, and delivered on time.", date: "2 days ago" },

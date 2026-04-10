@@ -1,9 +1,13 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Star, Truck, Shield, Leaf } from "lucide-react";
-import { products, reviews } from "@/data/products";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { mockProducts, reviews } from "@/data/products";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
+import { fetchProducts, toStorefrontProduct } from "@/lib/apiClient";
+import { supabase } from "@/integrations/supabase/client";
 
 const HeroSection = () => (
   <section className="relative bg-gradient-hero overflow-hidden">
@@ -55,7 +59,14 @@ const HeroSection = () => (
 );
 
 const DealsCarousel = () => {
-  const dealProducts = products.filter((p) => p.deal);
+  const { data } = useQuery({
+    queryKey: ["products"],
+    queryFn: () => fetchProducts(),
+  });
+
+  const products = (data?.products ?? []).map(toStorefrontProduct);
+  const list = products.length === 0 ? mockProducts : products;
+  const dealProducts = list.filter((p) => p.deal);
   return (
     <section className="container mx-auto px-4 py-16">
       <h2 className="font-display text-3xl font-bold mb-8">🔥 Hot Deals</h2>
@@ -69,7 +80,13 @@ const DealsCarousel = () => {
 };
 
 const TrendingSection = () => {
-  const trending = products.filter((p) => p.trending);
+  const { data } = useQuery({
+    queryKey: ["products", { trending: true }],
+    queryFn: () => fetchProducts({ trending: true }),
+  });
+
+  const products = (data?.products ?? []).map(toStorefrontProduct);
+  const trending = products.length === 0 ? mockProducts.filter((p) => p.trending) : products;
   return (
     <section className="container mx-auto px-4 py-16">
       <div className="flex items-center justify-between mb-8">
@@ -137,14 +154,31 @@ const ReviewsSection = () => (
   </section>
 );
 
-const Index = () => (
-  <div>
-    <HeroSection />
-    <FeaturesBar />
-    <DealsCarousel />
-    <TrendingSection />
-    <ReviewsSection />
-  </div>
-);
+const Index = () => {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("products:home")
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["products"], exact: false });
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  return (
+    <div>
+      <HeroSection />
+      <FeaturesBar />
+      <DealsCarousel />
+      <TrendingSection />
+      <ReviewsSection />
+    </div>
+  );
+};
 
 export default Index;
