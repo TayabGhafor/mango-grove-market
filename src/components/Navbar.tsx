@@ -1,5 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
-import { ShoppingCart, Search, Menu, X, User } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ShoppingCart, Search, Menu, X } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -7,8 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 const Navbar = () => {
   const { itemCount } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const location = useLocation();
-  const isAdmin = location.pathname.startsWith("/admin");
 
   return (
     <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
@@ -36,9 +34,6 @@ const Navbar = () => {
                 {itemCount}
               </span>
             )}
-          </Link>
-          <Link to="/admin" className="p-2 rounded-full hover:bg-muted transition-colors">
-            <User className="w-5 h-5 text-muted-foreground" />
           </Link>
         </div>
 
@@ -71,7 +66,6 @@ const Navbar = () => {
               <Link to="/products" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium">Shop</Link>
               <Link to="/search" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium">Search</Link>
               <Link to="/orders" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium">My Orders</Link>
-              <Link to="/admin" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium">Admin Panel</Link>
             </div>
           </motion.div>
         )}

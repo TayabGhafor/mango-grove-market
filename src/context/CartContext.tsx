@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useCallback } from "react";
 import { CartItem, Product } from "@/data/products";
 import { toast } from "@/hooks/use-toast";
 
+const MAX_CART_QUANTITY = 99;
+
 interface CartContextType {
   items: CartItem[];
   addToCart: (product: Product, weight: Product["weights"][0], quantity?: number) => void;
@@ -14,24 +16,37 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const normalizeQuantity = (quantity: number) => {
+  if (!Number.isFinite(quantity)) return 1;
+  return Math.min(MAX_CART_QUANTITY, Math.max(1, Math.floor(quantity)));
+};
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
 
   const addToCart = useCallback((product: Product, weight: Product["weights"][0], quantity = 1) => {
+    const selectedWeight = product.weights.find((w) => w.kg === weight.kg);
+    if (!selectedWeight) {
+      toast({ title: "Invalid weight selected", variant: "destructive" });
+      return;
+    }
+
+    const safeQuantity = normalizeQuantity(quantity);
+
     setItems((prev) => {
       const existing = prev.find(
-        (i) => i.product.id === product.id && i.weight.kg === weight.kg
+        (i) => i.product.id === product.id && i.weight.kg === selectedWeight.kg
       );
       if (existing) {
         return prev.map((i) =>
-          i.product.id === product.id && i.weight.kg === weight.kg
-            ? { ...i, quantity: i.quantity + quantity }
+          i.product.id === product.id && i.weight.kg === selectedWeight.kg
+            ? { ...i, quantity: normalizeQuantity(i.quantity + safeQuantity) }
             : i
         );
       }
-      return [...prev, { product, weight, quantity }];
+      return [...prev, { product, weight: selectedWeight, quantity: safeQuantity }];
     });
-    toast({ title: "Added to cart!", description: `${product.title} (${weight.label})` });
+    toast({ title: "Added to cart!", description: `${product.title} (${selectedWeight.label})` });
   }, []);
 
   const removeFromCart = useCallback((productId: string, weightKg: number) => {
@@ -43,9 +58,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       removeFromCart(productId, weightKg);
       return;
     }
+    const safeQuantity = normalizeQuantity(quantity);
     setItems((prev) =>
       prev.map((i) =>
-        i.product.id === productId && i.weight.kg === weightKg ? { ...i, quantity } : i
+        i.product.id === productId && i.weight.kg === weightKg ? { ...i, quantity: safeQuantity } : i
       )
     );
   }, [removeFromCart]);
