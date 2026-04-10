@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# MangoMart
 
 TODO: Document your project here
