@@ -7,6 +7,7 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "seed:supabase-admin": "node src/scripts/seedSupabaseAdmin.js",
+    "seed:supabase-sample": "node src/scripts/seedSupabaseSampleData.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },

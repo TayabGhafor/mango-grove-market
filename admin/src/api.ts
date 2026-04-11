@@ -252,6 +252,20 @@ const parseDeal = (value: unknown): Product["deal"] => {
   return { label, discount };
 };
 
+const toError = (error: unknown, fallback: string) => {
+  if (error instanceof Error) return error;
+  if (error && typeof error === "object") {
+    const record = error as { message?: unknown; code?: unknown; details?: unknown; hint?: unknown };
+    const message = typeof record.message === "string" ? record.message : fallback;
+    const code = typeof record.code === "string" ? record.code : "";
+    const details = typeof record.details === "string" ? record.details : "";
+    const hint = typeof record.hint === "string" ? record.hint : "";
+    const suffix = [code, details, hint].filter(Boolean).join(" · ");
+    return new Error(suffix ? `${message} (${suffix})` : message);
+  }
+  return new Error(fallback);
+};
+
 const isMissingProfilesTable = (error: unknown) => {
   if (!error || typeof error !== "object") return false;
   const code = (error as { code?: unknown }).code;
@@ -265,7 +279,7 @@ const ensureAdmin = async (userId: string) => {
     if (isMissingProfilesTable(error)) {
       throw new Error("Supabase database schema is not installed yet (missing profiles table).");
     }
-    throw error;
+    throw toError(error, "Unable to load admin profile.");
   }
   if (!data) throw new Error("Profile not found.");
   if (data.role !== "admin") throw new Error("Only admin users can access this panel.");
@@ -275,7 +289,7 @@ const ensureAdmin = async (userId: string) => {
 export const loginAdmin = async (email: string, password: string) => {
   const supabase = getSupabase();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
+  if (error) throw toError(error, "Login failed.");
   if (!data.session || !data.user) throw new Error("Login failed.");
   const profile = await ensureAdmin(data.user.id);
   return {
@@ -292,7 +306,7 @@ export const loginAdmin = async (email: string, password: string) => {
 export const getProducts = async (_token: string) => {
   const supabase = getSupabase();
   const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
-  if (error) throw error;
+  if (error) throw toError(error, "Unable to load products.");
   const products = (data ?? []).map((row) => ({
     _id: row.id,
     title: row.title,
@@ -313,7 +327,7 @@ export const getProducts = async (_token: string) => {
 export const getOrders = async (_token: string) => {
   const supabase = getSupabase();
   const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
-  if (error) throw error;
+  if (error) throw toError(error, "Unable to load orders.");
   const orders = (data ?? []).map((row) => {
     const customer = (row.customer ?? {}) as Record<string, unknown>;
     const payment = (row.payment ?? {}) as Record<string, unknown>;
@@ -339,7 +353,7 @@ export const getOrders = async (_token: string) => {
 export const getUsers = async (_token: string) => {
   const supabase = getSupabase();
   const { data, error } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
-  if (error) throw error;
+  if (error) throw toError(error, "Unable to load users.");
   const users = (data ?? []).map((row) => ({
     _id: row.id,
     name: row.name,
@@ -369,7 +383,7 @@ export const createProduct = async (_token: string, payload: ProductPayload) => 
     })
     .select("*")
     .single();
-  if (error) throw error;
+  if (error) throw toError(error, "Unable to create product.");
   const product = {
     _id: data.id,
     title: data.title,
@@ -407,7 +421,7 @@ export const updateProduct = async (_token: string, productId: string, payload: 
     .eq("id", productId)
     .select("*")
     .single();
-  if (error) throw error;
+  if (error) throw toError(error, "Unable to update product.");
   const product = {
     _id: data.id,
     title: data.title,
@@ -428,13 +442,13 @@ export const updateProduct = async (_token: string, productId: string, payload: 
 export const deleteProduct = async (_token: string, productId: string) => {
   const supabase = getSupabase();
   const { error } = await supabase.from("products").update({ active: false }).eq("id", productId);
-  if (error) throw error;
+  if (error) throw toError(error, "Unable to delete product.");
 };
 
 export const updateOrderStatus = async (_token: string, orderId: string, status: string) => {
   const supabase = getSupabase();
   const { data, error } = await supabase.from("orders").update({ status }).eq("id", orderId).select("*").single();
-  if (error) throw error;
+  if (error) throw toError(error, "Unable to update order status.");
   const customer = (data.customer ?? {}) as Record<string, unknown>;
   const payment = (data.payment ?? {}) as Record<string, unknown>;
   return {

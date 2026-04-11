@@ -286,7 +286,16 @@ export function App() {
     );
   }
 
-  const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+  const orderRevenue = orders
+    .filter((order) => order.status !== "cancelled")
+    .reduce((sum, order) => sum + order.total, 0);
+  const cancelledCount = orders.filter((order) => order.status === "cancelled").length;
+  const customerCount = users.filter((user) => user.role === "customer").length;
+  const schemaHint = error.includes("Could not find the table")
+    ? "Database tables are missing in Supabase. Run the migration SQL in supabase/migrations/20260410193000_reconcile_store_schema.sql using the Supabase SQL Editor, then refresh."
+    : error.includes("schema is not installed")
+      ? "Database tables are missing in Supabase. Run the migration SQL in supabase/migrations/20260410193000_reconcile_store_schema.sql using the Supabase SQL Editor, then refresh."
+      : "";
 
   return (
     <main className="admin-shell">
@@ -295,18 +304,28 @@ export function App() {
           <p className="eyebrow">Admin portal</p>
           <h1>Mango Grove Market</h1>
         </div>
-        <button className="secondary-button" type="button" onClick={logout}>Sign out</button>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button className="secondary-button" type="button" onClick={() => void refresh(token)} disabled={loading}>
+            Refresh
+          </button>
+          <button className="secondary-button" type="button" onClick={logout}>Sign out</button>
+        </div>
       </header>
 
       <nav className="tabs" aria-label="Admin sections">
         {(["dashboard", "products", "orders", "users"] as const).map((tab) => (
           <button key={tab} type="button" className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
-            {tab}
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
       </nav>
 
-      {error && <p className="error">{error}</p>}
+      {error && (
+        <div className="error">
+          <p style={{ margin: 0, fontWeight: 800 }}>{error}</p>
+          {schemaHint && <p style={{ margin: "6px 0 0", color: "#7a2a20" }}>{schemaHint}</p>}
+        </div>
+      )}
       {loading && <p className="muted">Loading latest store data...</p>}
 
       {activeTab === "dashboard" && (
@@ -316,16 +335,20 @@ export function App() {
             <strong>{orders.length}</strong>
           </article>
           <article className="metric">
-            <span>Total revenue</span>
-            <strong>Rs. {totalRevenue.toLocaleString()}</strong>
+            <span>Revenue (excl cancelled)</span>
+            <strong>Rs. {orderRevenue.toLocaleString()}</strong>
           </article>
           <article className="metric">
-            <span>Active users</span>
-            <strong>{users.length}</strong>
+            <span>Customers</span>
+            <strong>{customerCount}</strong>
           </article>
           <article className="metric">
             <span>Products</span>
             <strong>{products.length}</strong>
+          </article>
+          <article className="metric">
+            <span>Cancelled</span>
+            <strong>{cancelledCount}</strong>
           </article>
           <article className="chart-panel">
             <h2>Recent orders</h2>
