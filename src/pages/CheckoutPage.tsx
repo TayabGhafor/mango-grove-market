@@ -7,7 +7,8 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { PaymentDetails, PaymentMethod, validateCheckout } from "@/lib/checkoutValidation";
-import { createOrder } from "@/lib/apiClient";
+import { createOrder, type ApiOrder } from "@/lib/apiClient";
+import { useQueryClient } from "@tanstack/react-query";
 
 const paymentMethods = [
   { id: "cod", label: "Cash on Delivery", icon: Banknote },
@@ -129,6 +130,7 @@ const CheckoutPage = () => {
   const { items, total, clearCart } = useCart();
   const { user, profile, updateProfile } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState({ name: "", address: "", phone: "" });
   const [payment, setPayment] = useState<PaymentMethod>("cod");
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>(initialPaymentDetails);
@@ -155,7 +157,7 @@ const CheckoutPage = () => {
 
   const delivery = total >= 2000 ? 0 : 200;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
       navigate("/login?next=%2Fcheckout");
@@ -173,65 +175,80 @@ const CheckoutPage = () => {
     }
 
     setLoading(true);
-    const orderItems = items.map((item) => ({
-      productId: item.product.id,
-      title: item.product.title,
-      image: item.product.images[0] ?? "",
-      weight: {
-        label: item.weight.label,
-        kg: item.weight.kg as 3 | 5 | 8,
-        price: item.weight.price,
-      },
-      quantity: item.quantity,
-    }));
+    try {
+      const orderItems = items.map((item) => ({
+        productId: item.product.id,
+        title: item.product.title,
+        image: item.product.images[0] ?? "",
+        weight: {
+          label: item.weight.label,
+          kg: item.weight.kg as 3 | 5 | 8,
+          price: item.weight.price,
+        },
+        quantity: item.quantity,
+      }));
 
-    const paymentPayload = payment === "card"
-      ? {
-          method: "card" as const,
-          verified: true,
-          reference: "test-card",
-          deliveryFee: delivery,
-        }
-      : payment === "easypaisa" || payment === "jazzcash"
+      const paymentPayload = payment === "card"
         ? {
-            method: payment,
+            method: "card" as const,
             verified: true,
-            reference: (paymentDetails.transactionId ?? "").trim(),
+            reference: "test-card",
             deliveryFee: delivery,
           }
-        : { method: "cod" as const, verified: true, deliveryFee: delivery };
+        : payment === "easypaisa" || payment === "jazzcash"
+          ? {
+              method: payment,
+              verified: true,
+              reference: (paymentDetails.transactionId ?? "").trim(),
+              deliveryFee: delivery,
+            }
+          : { method: "cod" as const, verified: true, deliveryFee: delivery };
 
-    const payload = {
-      items: orderItems,
-      customer: {
-        name: form.name.trim(),
-        address: form.address.trim(),
-        phone: form.phone.trim(),
-      },
-      payment: paymentPayload,
-      total: total + delivery,
-    };
+      const payload = {
+        items: orderItems,
+        customer: {
+          name: form.name.trim(),
+          address: form.address.trim(),
+          phone: form.phone.trim(),
+        },
+        payment: paymentPayload,
+        total: total + delivery,
+      };
 
-    updateProfile({
-      name: payload.customer.name,
-      address: payload.customer.address,
-      phone: payload.customer.phone,
-    })
-      .catch(() => undefined)
-      .then(() => createOrder(payload))
-      .then(() => {
-        clearCart();
-        toast({ title: "Order placed! 🎉", description: "Your mangoes are on the way." });
-        navigate("/orders");
-      })
-      .catch((error) => {
-        toast({
-          title: "Order failed",
-          description: error instanceof Error ? error.message : "Unable to place order.",
-          variant: "destructive",
-        });
-      })
-      .finally(() => setLoading(false));
+      const { order } = await createOrder(payload);
+
+      queryClient.setQueryData<{ orders: ApiOrder[] }>(["orders", "my", user.id], (prev) => {
+        const existing = prev?.orders ?? [];
+        return { orders: [order, ...existing] };
+      });
+
+      try {
+        const raw = sessionStorage.getItem(`orders:my:${user.id}`);
+        const existing = raw ? (JSON.parse(raw) as { orders?: unknown }).orders : null;
+        const nextOrders = Array.isArray(existing) ? [order, ...existing] : [order];
+        sessionStorage.setItem(`orders:my:${user.id}`, JSON.stringify({ orders: nextOrders, cachedAt: Date.now() }));
+      } catch {
+        sessionStorage.removeItem(`orders:my:${user.id}`);
+      }
+
+      void updateProfile({
+        name: payload.customer.name,
+        address: payload.customer.address,
+        phone: payload.customer.phone,
+      }).catch(() => undefined);
+
+      clearCart();
+      toast({ title: "Order placed! 🎉", description: "Your mangoes are on the way." });
+      navigate("/orders");
+    } catch (error) {
+      toast({
+        title: "Order failed",
+        description: error instanceof Error ? error.message : "Unable to place order.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

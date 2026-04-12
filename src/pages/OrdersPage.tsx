@@ -1,10 +1,36 @@
 import { Package, CheckCircle2, Truck, MapPin, Clock } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { fetchMyOrders } from "@/lib/apiClient";
+import { fetchMyOrders, type ApiOrder } from "@/lib/apiClient";
 import { supabase } from "@/integrations/supabase/client";
+
+const getOrdersCacheKey = (userId: string) => `orders:my:${userId}`;
+
+type OrdersQueryData = { orders: ApiOrder[] };
+
+const readCachedOrders = (userId: string) => {
+  try {
+    const raw = sessionStorage.getItem(getOrdersCacheKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { orders?: unknown; cachedAt?: unknown };
+    if (!parsed || typeof parsed !== "object") return null;
+    if (!Array.isArray(parsed.orders)) return null;
+    const cachedAt = typeof parsed.cachedAt === "number" ? parsed.cachedAt : 0;
+    return { orders: parsed.orders as ApiOrder[], cachedAt };
+  } catch {
+    return null;
+  }
+};
+
+const writeCachedOrders = (userId: string, orders: ApiOrder[]) => {
+  try {
+    sessionStorage.setItem(getOrdersCacheKey(userId), JSON.stringify({ orders, cachedAt: Date.now() }));
+  } catch {
+    return;
+  }
+};
 
 const statusConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
   pending: { icon: Clock, color: "text-muted-foreground", label: "Pending" },
@@ -20,21 +46,45 @@ const statusSteps = ["pending", "processed", "dispatched", "out-for-delivery", "
 const OrdersPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const userId = user?.id ?? "";
+  const queryKey = useMemo(() => ["orders", "my", userId] as const, [userId]);
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["orders", "my"],
+    queryKey,
     queryFn: () => fetchMyOrders(),
-    enabled: Boolean(user),
+    enabled: Boolean(userId),
+    staleTime: 15_000,
+    initialData: () => {
+      if (!userId) return undefined;
+      const cached = readCachedOrders(userId);
+      if (!cached) return undefined;
+      return { orders: cached.orders } satisfies OrdersQueryData;
+    },
+    initialDataUpdatedAt: () => {
+      if (!userId) return 0;
+      const cached = readCachedOrders(userId);
+      return cached?.cachedAt ?? 0;
+    },
   });
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     const channel = supabase
-      .channel(`orders:${user.id}`)
+      .channel(`orders:${userId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "orders", filter: `user_id=eq.${user.id}` },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["orders"], exact: false });
+        { event: "*", schema: "public", table: "orders", filter: `user_id=eq.${userId}` },
+        (payload) => {
+          const eventType = (payload as { eventType?: string }).eventType ?? "";
+          const next = (payload as { new?: { id?: string; status?: string } }).new;
+          if (eventType === "UPDATE" && next?.id && next.status) {
+            queryClient.setQueryData(queryKey, (prev?: OrdersQueryData) => {
+              const orders = prev?.orders ?? [];
+              const updated = orders.map((order) => (order._id === next.id ? { ...order, status: next.status } : order));
+              return { orders: updated };
+            });
+            return;
+          }
+          queryClient.invalidateQueries({ queryKey });
         },
       )
       .subscribe();
@@ -42,7 +92,14 @@ const OrdersPage = () => {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [queryClient, user]);
+  }, [queryClient, queryKey, userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const orders = data?.orders;
+    if (!orders) return;
+    writeCachedOrders(userId, orders);
+  }, [data?.orders, userId]);
 
   if (!user) {
     return (
@@ -68,7 +125,7 @@ const OrdersPage = () => {
       )}
       <div className="space-y-6">
         {orders.map((order) => {
-          const currentStep = statusSteps.indexOf(order.status);
+          const currentStep = Math.max(0, statusSteps.indexOf(order.status));
           const config = statusConfig[order.status] ?? statusConfig.pending;
           return (
             <div key={order._id} className="bg-card rounded-xl border border-border p-6">
@@ -93,7 +150,13 @@ const OrdersPage = () => {
               <div className="space-y-2">
                 {order.items.map((item, i) => (
                   <div key={i} className="flex items-center gap-3 text-sm">
-                    <img src={item.image} alt={item.title} className="w-10 h-10 rounded-lg object-cover" />
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-10 h-10 rounded-lg object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
                     <span className="flex-1">{item.title} × {item.quantity} ({item.weight.label})</span>
                     <span className="font-medium">Rs. {(item.weight.price * item.quantity).toLocaleString()}</span>
                   </div>

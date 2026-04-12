@@ -219,45 +219,47 @@ export const createOrder = async (payload: {
       payment: payload.payment as unknown as Json,
       status: "pending",
     })
-    .select("*")
+    .select("id,customer,payment,total,status,created_at")
     .single();
   if (orderError) throw orderError;
 
   const orderId = order.id;
 
-  const { error: itemError } = await supabase.from("order_items").insert(
-    payload.items.map((item) => ({
-      order_id: orderId,
-      product_id: item.productId,
-      title: item.title,
-      image: item.image,
-      weight_label: item.weight.label,
-      weight_kg: item.weight.kg,
-      unit_price: item.weight.price,
-      quantity: item.quantity,
-      subtotal: item.weight.price * item.quantity,
-    })),
-  );
+  const { data: orderItems, error: itemError } = await supabase
+    .from("order_items")
+    .insert(
+      payload.items.map((item) => ({
+        order_id: orderId,
+        product_id: item.productId,
+        title: item.title,
+        image: item.image,
+        weight_label: item.weight.label,
+        weight_kg: item.weight.kg,
+        unit_price: item.weight.price,
+        quantity: item.quantity,
+        subtotal: item.weight.price * item.quantity,
+      })),
+    )
+    .select("product_id,title,image,weight_label,weight_kg,unit_price,quantity,subtotal");
 
   if (itemError) {
     await supabase.from("orders").delete().eq("id", orderId);
     throw itemError;
   }
+  const fullOrder = {
+    ...(order as Tables<"orders">),
+    order_items: (orderItems ?? []) as Tables<"order_items">[],
+  } satisfies DbOrderWithItems;
 
-  const { data: fullOrder, error: fetchError } = await supabase
-    .from("orders")
-    .select("*, order_items(*)")
-    .eq("id", orderId)
-    .single();
-  if (fetchError) throw fetchError;
-
-  return { order: toApiOrder(fullOrder as DbOrderWithItems) };
+  return { order: toApiOrder(fullOrder) };
 };
 
 export const fetchMyOrders = async () => {
   const { data, error } = await supabase
     .from("orders")
-    .select("*, order_items(*)")
+    .select(
+      "id,customer,payment,total,status,created_at,order_items(product_id,title,image,weight_label,weight_kg,unit_price,quantity,subtotal)",
+    )
     .order("created_at", { ascending: false });
   if (error) throw error;
   return { orders: (data ?? []).map((row) => toApiOrder(row as DbOrderWithItems)) };
