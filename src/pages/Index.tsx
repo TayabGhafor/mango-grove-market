@@ -1,182 +1,274 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Star, Truck, Shield, Leaf } from "lucide-react";
-import { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { mockProducts, reviews } from "@/data/products";
-import ProductCard from "@/components/ProductCard";
-import { Button } from "@/components/ui/button";
-import { fetchProducts, toStorefrontProduct } from "@/lib/apiClient";
-import { supabase } from "@/integrations/supabase/client";
+import { ArrowUpRight, Star, Users, Heart, Leaf, CheckCircle } from "lucide-react";
+import heroMango from "@/assets/hero-mango.png";
+import mangoProduct from "@/assets/mango-product.png";
+import mangoBasket from "@/assets/mango-basket.png";
+import mangoBox from "@/assets/mango-box.png";
 
-const HeroSection = () => (
-  <section className="relative bg-gradient-hero overflow-hidden">
-    <div className="container mx-auto px-4 py-20 md:py-28">
-      <div className="grid md:grid-cols-2 gap-10 items-center">
-        <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7 }}>
-          <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
-            🥭 Fresh Season 2026
-          </span>
-          <h1 className="font-display text-4xl md:text-6xl font-extrabold leading-tight">
-            Premium <span className="text-gradient-mango">Pakistani Mangoes</span> at Your Doorstep
-          </h1>
-          <p className="mt-4 text-lg text-muted-foreground max-w-md">
-            Hand-picked Sindhri, Chaunsa & Anwar Ratol — delivered fresh from orchards within 24 hours.
-          </p>
-          <div className="flex flex-wrap gap-3 mt-8">
-            <Button asChild size="lg" className="bg-gradient-mango hover:opacity-90 text-primary-foreground font-semibold shadow-mango">
-              <Link to="/products">Shop Now <ArrowRight className="ml-2 w-4 h-4" /></Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link to="/search">Browse Varieties</Link>
-            </Button>
-          </div>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.7, delay: 0.2 }}
-          className="relative hidden md:block"
-        >
-          <div className="relative w-full aspect-square max-w-md mx-auto">
-            <img
-              src="https://images.unsplash.com/photo-1553279768-865429fa0078?w=600"
-              alt="Fresh mangoes"
-              className="w-full h-full object-cover rounded-3xl shadow-mango animate-float"
-            />
-            <div className="absolute -bottom-4 -left-4 bg-card rounded-xl p-3 shadow-card border border-border">
-              <div className="flex items-center gap-2">
-                <Star className="w-5 h-5 fill-primary text-primary" />
-                <span className="font-bold">4.9</span>
-                <span className="text-sm text-muted-foreground">• 1200+ reviews</span>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </div>
+/* ── Left Panel: Product Card ── */
+const ProductCard = () => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.1, duration: 0.5 }}
+    whileHover={{ y: -4 }}
+    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"
+  >
+    <div className="flex-1">
+      <h3 className="font-display text-lg font-bold text-gray-900 leading-tight">
+        Fresh<br />Chaunsa
+      </h3>
+      <p className="text-amber-600 font-bold text-base mt-1">Rs. 1,200</p>
+      <p className="text-gray-400 text-xs">For 5 kg box</p>
     </div>
-  </section>
+    <img
+      src={mangoProduct}
+      alt="Fresh Chaunsa Mangoes"
+      className="w-28 h-28 object-contain"
+      width={512}
+      height={512}
+    />
+  </motion.div>
 );
 
-const DealsCarousel = () => {
-  const { data } = useQuery({
-    queryKey: ["products"],
-    queryFn: () => fetchProducts(),
-  });
+/* ── Left Panel: About Card ── */
+const AboutCard = () => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.2, duration: 0.5 }}
+    whileHover={{ y: -4 }}
+    className="bg-[hsl(85,30%,30%)] rounded-2xl p-6 text-white flex flex-col items-center text-center"
+  >
+    <span className="text-xs uppercase tracking-widest text-white/60 mb-3">About Us</span>
+    <h3 className="font-display text-lg font-bold leading-snug">
+      From Farm to Table: All About Your Favourite Mangoes
+    </h3>
+    <div className="flex items-center gap-6 mt-5 text-sm text-white/70">
+      <span className="flex items-center gap-1.5">
+        <Users className="w-4 h-4" /> 13k Followers
+      </span>
+      <span className="flex items-center gap-1.5">
+        <Heart className="w-4 h-4" /> 30k Likes
+      </span>
+    </div>
+  </motion.div>
+);
 
-  const products = (data?.products ?? []).map(toStorefrontProduct);
-  const list = products.length === 0 ? mockProducts : products;
-  const dealProducts = list.filter((p) => p.deal);
-  return (
-    <section className="container mx-auto px-4 py-16">
-      <h2 className="font-display text-3xl font-bold mb-8">🔥 Hot Deals</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {dealProducts.map((p, i) => (
-          <ProductCard key={p.id} product={p} index={i} />
+/* ── Left Panel: Reviews ── */
+const ReviewsCard = () => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.3, duration: 0.5 }}
+    className="space-y-4"
+  >
+    <div className="flex items-start gap-4">
+      <div>
+        <div className="flex gap-0.5 mb-1">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Star key={i} className="w-4 h-4 fill-amber-500 text-amber-500" />
+          ))}
+        </div>
+        <p className="text-sm text-gray-600">
+          <span className="font-bold text-gray-900">5000+</span> clients reviews (4.8 of 5)
+        </p>
+        <button className="text-xs font-bold text-amber-700 uppercase tracking-wider mt-1 hover:underline">
+          Read More
+        </button>
+      </div>
+      <div className="ml-auto bg-gray-900 text-white rounded-xl px-4 py-3 text-center shrink-0">
+        <span className="text-2xl font-black leading-none">1CR</span>
+        <p className="text-[10px] mt-0.5 text-white/80">Subscriber</p>
+      </div>
+    </div>
+    <div className="flex items-center gap-3">
+      <div className="flex -space-x-2">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 border-2 border-white"
+          />
         ))}
       </div>
-    </section>
-  );
-};
+      <p className="text-xs text-gray-500 uppercase font-semibold tracking-wide leading-tight">
+        Satisfied clients<br />with positive feedback
+      </p>
+    </div>
+  </motion.div>
+);
 
-const TrendingSection = () => {
-  const { data } = useQuery({
-    queryKey: ["products", { trending: true }],
-    queryFn: () => fetchProducts({ trending: true }),
-  });
+/* ── Hero Section (Right) ── */
+const HeroSection = () => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ duration: 0.6 }}
+    className="relative bg-[hsl(85,20%,85%)] rounded-3xl overflow-hidden flex flex-col justify-between p-8 md:p-12 min-h-[500px] lg:min-h-[600px]"
+  >
+    {/* Badge */}
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3, duration: 0.4 }}
+      className="flex items-center gap-2 mb-4"
+    >
+      <span className="bg-white/80 backdrop-blur rounded-full px-4 py-1.5 text-sm text-gray-700 flex items-center gap-2">
+        Organic <span className="bg-[hsl(85,30%,30%)] text-white rounded-full px-2 py-0.5 text-xs font-medium">&</span> Premium
+      </span>
+    </motion.div>
 
-  const products = (data?.products ?? []).map(toStorefrontProduct);
-  const trending = products.length === 0 ? mockProducts.filter((p) => p.trending) : products;
-  return (
-    <section className="container mx-auto px-4 py-16">
-      <div className="flex items-center justify-between mb-8">
-        <h2 className="font-display text-3xl font-bold">Trending Mangoes</h2>
-        <Link to="/products" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
-          View All <ArrowRight className="w-4 h-4" />
+    {/* Heading */}
+    <div className="relative z-10 max-w-md">
+      <motion.h1
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.7 }}
+        className="font-display text-5xl md:text-7xl lg:text-8xl font-black text-gray-900 leading-[0.9] tracking-tight"
+      >
+        Garden<br />Fresh
+      </motion.h1>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.5 }}
+        className="mt-6"
+      >
+        <Link
+          to="/products"
+          className="inline-flex items-center gap-2 bg-[hsl(85,30%,30%)] hover:bg-[hsl(85,30%,25%)] text-white px-7 py-3.5 rounded-lg font-semibold text-base transition-all duration-300 hover:shadow-lg hover:shadow-green-900/20"
+        >
+          Shop Now <ArrowUpRight className="w-4 h-4" />
         </Link>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {trending.map((p, i) => (
-          <ProductCard key={p.id} product={p} index={i} />
-        ))}
-      </div>
-    </section>
-  );
-};
+      </motion.div>
+    </div>
 
-const FeaturesBar = () => (
-  <section className="bg-foreground/5 py-12">
-    <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
-      {[
-        { icon: Truck, title: "Free Delivery", desc: "On orders above Rs. 2000" },
-        { icon: Shield, title: "Quality Guaranteed", desc: "100% fresh or money back" },
-        { icon: Leaf, title: "Farm Fresh", desc: "Directly from orchards" },
-      ].map((f) => (
-        <div key={f.title} className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-mango flex items-center justify-center shrink-0">
-            <f.icon className="w-6 h-6 text-primary-foreground" />
+    {/* Hero Mango Image */}
+    <motion.img
+      src={heroMango}
+      alt="Premium Pakistani Mango"
+      className="absolute right-0 top-1/2 -translate-y-1/2 w-[55%] max-w-[450px] object-contain pointer-events-none"
+      width={800}
+      height={800}
+      initial={{ opacity: 0, scale: 0.9, x: 40 }}
+      animate={{ opacity: 1, scale: 1, x: 0 }}
+      transition={{ delay: 0.3, duration: 0.8 }}
+      style={{ animation: "float 6s ease-in-out infinite" }}
+    />
+
+    {/* 100% Original Badge */}
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.7, duration: 0.4 }}
+      className="absolute top-8 right-8 md:top-12 md:right-16"
+    >
+      <div className="bg-[hsl(85,30%,30%)] text-white rounded-full w-16 h-16 flex flex-col items-center justify-center text-[10px] font-bold leading-tight">
+        <span className="text-xs">100%</span>
+        <CheckCircle className="w-4 h-4 mt-0.5" />
+        <span>Original</span>
+      </div>
+    </motion.div>
+  </motion.div>
+);
+
+/* ── Bottom Stats Section ── */
+const StatsSection = () => (
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+    {/* Left stats */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.5, duration: 0.5 }}
+      className="bg-[hsl(85,20%,40%)] rounded-2xl p-6 text-white relative overflow-hidden"
+    >
+      <p className="text-4xl font-black text-amber-300">2390+</p>
+      <p className="text-sm text-white/70 mt-1">Orders daily</p>
+      <img
+        src={mangoBasket}
+        alt="Mango basket"
+        className="absolute right-2 bottom-0 w-32 h-28 object-contain opacity-80"
+        loading="lazy"
+        width={640}
+        height={512}
+      />
+      <div className="mt-8 flex items-center gap-2">
+        <Leaf className="w-5 h-5 text-green-300" />
+        <span className="text-2xl font-black text-amber-200">100%</span>
+        <span className="text-sm text-white/70">Natural</span>
+      </div>
+    </motion.div>
+
+    {/* Right cards */}
+    <div className="space-y-4">
+      {/* Trusted User */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6, duration: 0.5 }}
+        whileHover={{ y: -3 }}
+        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"
+      >
+        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-300 to-amber-500" />
+        <div className="flex-1">
+          <p className="text-2xl font-black text-gray-900">34k</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">#Trusted User</p>
+        </div>
+        <button className="text-xs font-semibold border border-gray-300 rounded-full px-4 py-1.5 text-gray-600 hover:bg-gray-50 transition-colors">
+          Follow Us
+        </button>
+      </motion.div>
+
+      {/* Mango Magic card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.7, duration: 0.5 }}
+        whileHover={{ y: -3 }}
+        className="bg-[hsl(85,15%,50%)] rounded-2xl p-5 flex items-center gap-4 relative overflow-hidden"
+      >
+        <img
+          src={mangoBox}
+          alt="Mango delivery box"
+          className="w-20 h-20 object-contain"
+          loading="lazy"
+          width={512}
+          height={512}
+        />
+        <div className="text-white">
+          <h4 className="font-display font-bold text-sm leading-snug">
+            Mango Magic:<br />Where Health Meets<br />Flavor
+          </h4>
+          <p className="text-xs text-white/60 mt-1.5 flex items-center gap-1">
+            📍 Pakistan
+          </p>
+        </div>
+      </motion.div>
+    </div>
+  </div>
+);
+
+/* ── Main Page ── */
+const Index = () => {
+  return (
+    <div className="bg-[hsl(40,20%,95%)] min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 py-6 md:py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
+          {/* Left Column */}
+          <div className="flex flex-col gap-4">
+            <ProductCard />
+            <AboutCard />
+            <ReviewsCard />
           </div>
-          <div>
-            <h3 className="font-display font-semibold">{f.title}</h3>
-            <p className="text-sm text-muted-foreground">{f.desc}</p>
+
+          {/* Right Column */}
+          <div className="flex flex-col gap-4">
+            <HeroSection />
+            <StatsSection />
           </div>
         </div>
-      ))}
-    </div>
-  </section>
-);
-
-const ReviewsSection = () => (
-  <section className="container mx-auto px-4 py-16">
-    <h2 className="font-display text-3xl font-bold mb-8">What Customers Say</h2>
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {reviews.map((r, i) => (
-        <motion.div
-          key={r.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.1 }}
-          className="bg-card rounded-xl p-5 border border-border shadow-card"
-        >
-          <div className="flex gap-1 mb-2">
-            {Array.from({ length: r.rating }).map((_, j) => (
-              <Star key={j} className="w-4 h-4 fill-primary text-primary" />
-            ))}
-          </div>
-          <p className="text-sm text-foreground/80 mb-3">"{r.text}"</p>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">{r.name}</span>
-            <span>{r.date}</span>
-          </div>
-        </motion.div>
-      ))}
-    </div>
-  </section>
-);
-
-const Index = () => {
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    const channel = supabase
-      .channel("products:home")
-      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["products"], exact: false });
-      })
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
-
-  return (
-    <div>
-      <HeroSection />
-      <FeaturesBar />
-      <DealsCarousel />
-      <TrendingSection />
-      <ReviewsSection />
+      </div>
     </div>
   );
 };
