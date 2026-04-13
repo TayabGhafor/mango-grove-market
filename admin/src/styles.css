@@ -175,8 +175,28 @@ textarea {
 table {
   border-collapse: collapse;
   margin-top: 14px;
-  min-width: 720px;
+  min-width: 960px;
   width: 100%;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+.cell-muted {
+  color: #776e5c;
+  font-size: 0.82rem;
+}
+
+.order-items-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  max-width: 320px;
+}
+
+.order-items-list li {
+  margin-bottom: 4px;
 }
 
 th,

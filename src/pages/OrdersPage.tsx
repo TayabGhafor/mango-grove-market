@@ -1,5 +1,5 @@
 import { Package, CheckCircle2, Truck, MapPin, Clock } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -41,7 +41,63 @@ const statusConfig: Record<string, { icon: React.ElementType; color: string; lab
   cancelled: { icon: Clock, color: "text-destructive", label: "Cancelled" },
 };
 
-const statusSteps = ["pending", "processed", "dispatched", "out-for-delivery", "delivered", "cancelled"];
+const fulfillmentSteps = ["pending", "processed", "dispatched", "out-for-delivery", "delivered"] as const;
+
+type OrderRowProps = { order: ApiOrder };
+
+const OrderRow = memo(function OrderRow({ order }: OrderRowProps) {
+  const isCancelled = order.status === "cancelled";
+  const currentStep = isCancelled ? -1 : Math.max(0, fulfillmentSteps.indexOf(order.status as (typeof fulfillmentSteps)[number]));
+  const config = statusConfig[order.status] ?? statusConfig.pending;
+  return (
+    <div className="bg-card rounded-xl border border-border p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div>
+          <h3 className="font-display font-semibold">{order._id}</h3>
+          <p className="text-sm text-muted-foreground">
+            {new Date(order.createdAt).toLocaleDateString()} • {order.payment.method.toUpperCase()}
+          </p>
+        </div>
+        <div className={`flex items-center gap-2 text-sm font-medium ${config.color}`}>
+          <config.icon className="w-4 h-4" />
+          {config.label}
+        </div>
+      </div>
+      {isCancelled ? (
+        <p className="text-sm text-destructive mb-4">This order was cancelled.</p>
+      ) : (
+        <div className="flex items-center gap-1 mb-4">
+          {fulfillmentSteps.map((_, i) => (
+            <div key={i} className={`flex-1 h-1.5 rounded-full ${i <= currentStep ? "bg-gradient-mango" : "bg-muted"}`} />
+          ))}
+        </div>
+      )}
+      <div className="space-y-2">
+        {order.items.map((item, i) => (
+          <div key={i} className="flex items-center gap-3 text-sm">
+            <img
+              src={item.image}
+              alt={item.title}
+              className="w-10 h-10 rounded-lg object-cover"
+              loading="lazy"
+              decoding="async"
+              width={40}
+              height={40}
+            />
+            <span className="flex-1">
+              {item.title} × {item.quantity} ({item.weight.label})
+            </span>
+            <span className="font-medium">Rs. {(item.weight.price * item.quantity).toLocaleString()}</span>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-border mt-3 pt-3 flex justify-between font-bold">
+        <span>Total</span>
+        <span>Rs. {order.total.toLocaleString()}</span>
+      </div>
+    </div>
+  );
+});
 
 const OrdersPage = () => {
   const { user } = useAuth();
@@ -52,7 +108,7 @@ const OrdersPage = () => {
     queryKey,
     queryFn: () => fetchMyOrders(),
     enabled: Boolean(userId),
-    staleTime: 15_000,
+    staleTime: 60_000,
     initialData: () => {
       if (!userId) return undefined;
       const cached = readCachedOrders(userId);
@@ -124,51 +180,9 @@ const OrdersPage = () => {
         <p className="text-muted-foreground">No orders yet.</p>
       )}
       <div className="space-y-6">
-        {orders.map((order) => {
-          const currentStep = Math.max(0, statusSteps.indexOf(order.status));
-          const config = statusConfig[order.status] ?? statusConfig.pending;
-          return (
-            <div key={order._id} className="bg-card rounded-xl border border-border p-6">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <div>
-                  <h3 className="font-display font-semibold">{order._id}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(order.createdAt).toLocaleDateString()} • {order.payment.method.toUpperCase()}
-                  </p>
-                </div>
-                <div className={`flex items-center gap-2 text-sm font-medium ${config.color}`}>
-                  <config.icon className="w-4 h-4" />
-                  {config.label}
-                </div>
-              </div>
-              {/* Progress bar */}
-              <div className="flex items-center gap-1 mb-4">
-                {statusSteps.map((_, i) => (
-                  <div key={i} className={`flex-1 h-1.5 rounded-full ${i <= currentStep ? "bg-gradient-mango" : "bg-muted"}`} />
-                ))}
-              </div>
-              <div className="space-y-2">
-                {order.items.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 text-sm">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="w-10 h-10 rounded-lg object-cover"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    <span className="flex-1">{item.title} × {item.quantity} ({item.weight.label})</span>
-                    <span className="font-medium">Rs. {(item.weight.price * item.quantity).toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="border-t border-border mt-3 pt-3 flex justify-between font-bold">
-                <span>Total</span>
-                <span>Rs. {order.total.toLocaleString()}</span>
-              </div>
-            </div>
-          );
-        })}
+        {orders.map((order) => (
+          <OrderRow key={order._id} order={order} />
+        ))}
       </div>
     </div>
   );

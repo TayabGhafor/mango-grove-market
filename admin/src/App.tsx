@@ -597,7 +597,9 @@ export function App() {
           <table>
             <thead>
               <tr>
+                <th>Order</th>
                 <th>Customer</th>
+                <th>Items</th>
                 <th>Total</th>
                 <th>Payment</th>
                 <th>Status</th>
@@ -606,7 +608,29 @@ export function App() {
             <tbody>
               {orders.map((order) => (
                 <tr key={order._id}>
-                  <td>{order.customer.name}</td>
+                  <td>
+                    <span className="mono" title={order._id}>
+                      {order._id.slice(0, 8)}…
+                    </span>
+                  </td>
+                  <td>
+                    <div>{order.customer.name}</div>
+                    <div className="cell-muted">{order.customer.phone}</div>
+                    <div className="cell-muted">{order.customer.address}</div>
+                  </td>
+                  <td>
+                    <ul className="order-items-list">
+                      {order.items.length === 0 ? (
+                        <li className="cell-muted">No line items</li>
+                      ) : (
+                        order.items.map((line, i) => (
+                          <li key={`${order._id}-${i}`}>
+                            {line.title} × {line.quantity} ({line.weightLabel}) — Rs. {(line.unitPrice * line.quantity).toLocaleString()}
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  </td>
                   <td>Rs. {order.total.toLocaleString()}</td>
                   <td>{order.payment.method}</td>
                   <td>

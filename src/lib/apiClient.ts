@@ -255,11 +255,19 @@ export const createOrder = async (payload: {
 };
 
 export const fetchMyOrders = async () => {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  if (!user) throw new Error("Not signed in.");
+
   const { data, error } = await supabase
     .from("orders")
     .select(
       "id,customer,payment,total,status,created_at,order_items(product_id,title,image,weight_label,weight_kg,unit_price,quantity,subtotal)",
     )
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return { orders: (data ?? []).map((row) => toApiOrder(row as DbOrderWithItems)) };

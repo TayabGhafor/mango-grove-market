@@ -76,7 +76,8 @@ const ProductDetail = () => {
               alt={product.title}
               className="w-full h-full object-cover"
               decoding="async"
-              fetchPriority="high"
+              loading="eager"
+              fetchpriority="high"
             />
           </div>
           <div className="flex gap-2">

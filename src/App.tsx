@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -11,8 +12,9 @@ import Index from "@/pages/Index";
 import ProductsPage from "@/pages/ProductsPage";
 import ProductDetail from "@/pages/ProductDetail";
 import CartPage from "@/pages/CartPage";
-import CheckoutPage from "@/pages/CheckoutPage";
-import OrdersPage from "@/pages/OrdersPage";
+
+const CheckoutPage = lazy(() => import("@/pages/CheckoutPage"));
+const OrdersPage = lazy(() => import("@/pages/OrdersPage"));
 import SearchPage from "@/pages/SearchPage";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
@@ -64,7 +66,15 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <AppLayout />
+            <Suspense
+              fallback={
+                <div className="container mx-auto px-4 py-16 text-center text-muted-foreground text-sm">
+                  Loading...
+                </div>
+              }
+            >
+              <AppLayout />
+            </Suspense>
           </BrowserRouter>
         </CartProvider>
       </AuthProvider>

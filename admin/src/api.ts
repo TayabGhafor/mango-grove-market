@@ -128,6 +128,45 @@ type AdminDatabase = {
         };
         Relationships: [];
       };
+      order_items: {
+        Row: {
+          id: string;
+          order_id: string;
+          product_id: string | null;
+          image: string;
+          title: string;
+          weight_label: string;
+          weight_kg: number;
+          unit_price: number;
+          quantity: number;
+          subtotal: number;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          product_id?: string | null;
+          image?: string;
+          title: string;
+          weight_label?: string;
+          weight_kg?: number;
+          unit_price?: number;
+          quantity?: number;
+          subtotal?: number;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          product_id?: string | null;
+          image?: string;
+          title?: string;
+          weight_label?: string;
+          weight_kg?: number;
+          unit_price?: number;
+          quantity?: number;
+          subtotal?: number;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -204,9 +243,19 @@ export interface Product {
 
 export type ProductPayload = Omit<Product, "_id">;
 
+export interface OrderLineItem {
+  title: string;
+  image: string;
+  quantity: number;
+  weightLabel: string;
+  unitPrice: number;
+}
+
 export interface Order {
   _id: string;
+  userId: string;
   customer: { name: string; phone: string; address: string };
+  items: OrderLineItem[];
   total: number;
   status: string;
   payment: { method: string; verified: boolean };
@@ -220,6 +269,54 @@ export interface User {
   role: string;
   createdAt: string;
 }
+
+type OrderRowNestedItem = {
+  title: string;
+  image: string;
+  weight_label: string;
+  unit_price: number | string;
+  quantity: number;
+};
+
+type OrderRowWithItems = AdminDatabase["public"]["Tables"]["orders"]["Row"] & {
+  order_items?: OrderRowNestedItem[] | null;
+};
+
+const mapOrderLineItems = (rows: OrderRowNestedItem[] | null | undefined): OrderLineItem[] => {
+  if (!rows?.length) return [];
+  return rows.map((item) => ({
+    title: item.title,
+    image: item.image,
+    quantity: Number(item.quantity) || 1,
+    weightLabel: item.weight_label,
+    unitPrice: Number(item.unit_price) || 0,
+  }));
+};
+
+const mapOrderRow = (row: OrderRowWithItems): Order => {
+  const customer = (row.customer ?? {}) as Record<string, unknown>;
+  const payment = (row.payment ?? {}) as Record<string, unknown>;
+  return {
+    _id: row.id,
+    userId: row.user_id,
+    customer: {
+      name: typeof customer.name === "string" ? customer.name : "",
+      phone: typeof customer.phone === "string" ? customer.phone : "",
+      address: typeof customer.address === "string" ? customer.address : "",
+    },
+    items: mapOrderLineItems(row.order_items),
+    total: Number(row.total) || 0,
+    status: row.status,
+    payment: {
+      method: typeof payment.method === "string" ? payment.method : "cod",
+      verified: Boolean(payment.verified),
+    },
+    createdAt: row.created_at,
+  };
+};
+
+const ordersSelect =
+  "id,user_id,customer,payment,total,status,created_at,order_items(title,image,weight_label,unit_price,quantity)";
 
 const parseStringArray = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
@@ -326,27 +423,9 @@ export const getProducts = async (_token: string) => {
 
 export const getOrders = async (_token: string) => {
   const supabase = getSupabase();
-  const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+  const { data, error } = await supabase.from("orders").select(ordersSelect).order("created_at", { ascending: false });
   if (error) throw toError(error, "Unable to load orders.");
-  const orders = (data ?? []).map((row) => {
-    const customer = (row.customer ?? {}) as Record<string, unknown>;
-    const payment = (row.payment ?? {}) as Record<string, unknown>;
-    return {
-      _id: row.id,
-      customer: {
-        name: typeof customer.name === "string" ? customer.name : "",
-        phone: typeof customer.phone === "string" ? customer.phone : "",
-        address: typeof customer.address === "string" ? customer.address : "",
-      },
-      total: Number(row.total) || 0,
-      status: row.status,
-      payment: {
-        method: typeof payment.method === "string" ? payment.method : "cod",
-        verified: Boolean(payment.verified),
-      },
-      createdAt: row.created_at,
-    } satisfies Order;
-  });
+  const orders = (data ?? []).map((row) => mapOrderRow(row as OrderRowWithItems));
   return { orders };
 };
 
@@ -447,25 +526,7 @@ export const deleteProduct = async (_token: string, productId: string) => {
 
 export const updateOrderStatus = async (_token: string, orderId: string, status: string) => {
   const supabase = getSupabase();
-  const { data, error } = await supabase.from("orders").update({ status }).eq("id", orderId).select("*").single();
+  const { data, error } = await supabase.from("orders").update({ status }).eq("id", orderId).select(ordersSelect).single();
   if (error) throw toError(error, "Unable to update order status.");
-  const customer = (data.customer ?? {}) as Record<string, unknown>;
-  const payment = (data.payment ?? {}) as Record<string, unknown>;
-  return {
-    order: {
-      _id: data.id,
-      customer: {
-        name: typeof customer.name === "string" ? customer.name : "",
-        phone: typeof customer.phone === "string" ? customer.phone : "",
-        address: typeof customer.address === "string" ? customer.address : "",
-      },
-      total: Number(data.total) || 0,
-      status: data.status,
-      payment: {
-        method: typeof payment.method === "string" ? payment.method : "cod",
-        verified: Boolean(payment.verified),
-      },
-      createdAt: data.created_at,
-    } satisfies Order,
-  };
+  return { order: mapOrderRow(data as OrderRowWithItems) };
 };
