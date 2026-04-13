@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowUpRight, Star, Users, Heart, Leaf, CheckCircle } from "lucide-react";
+import { useState } from "react";
+import { motion, useMotionValue, useTransform, useSpring, AnimatePresence } from "framer-motion";
+import { ArrowUpRight, Star, Users, Heart, Leaf, CheckCircle, Sparkles } from "lucide-react";
 import heroMango from "@/assets/hero-mango.png";
 import mangoProduct from "@/assets/mango-product.png";
 import mangoBasket from "@/assets/mango-basket.png";
@@ -12,8 +13,8 @@ const ProductCard = () => (
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay: 0.1, duration: 0.5 }}
-    whileHover={{ y: -4 }}
-    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"
+    whileHover={{ y: -4, boxShadow: "0 12px 30px -8px rgba(0,0,0,0.12)" }}
+    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 cursor-pointer"
   >
     <div className="flex-1">
       <h3 className="font-display text-lg font-bold text-gray-900 leading-tight">
@@ -22,12 +23,14 @@ const ProductCard = () => (
       <p className="text-amber-600 font-bold text-base mt-1">Rs. 1,200</p>
       <p className="text-gray-400 text-xs">For 5 kg box</p>
     </div>
-    <img
+    <motion.img
       src={mangoProduct}
       alt="Fresh Chaunsa Mangoes"
       className="w-28 h-28 object-contain"
       width={512}
       height={512}
+      whileHover={{ scale: 1.08, rotate: 3 }}
+      transition={{ type: "spring", stiffness: 300 }}
     />
   </motion.div>
 );
@@ -99,6 +102,132 @@ const ReviewsCard = () => (
   </motion.div>
 );
 
+/* ── Interactive Hero Mango ── */
+const InteractiveMangoImage = () => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([]);
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  const rotateX = useSpring(useTransform(mouseY, [-150, 150], [8, -8]), { stiffness: 150, damping: 20 });
+  const rotateY = useSpring(useTransform(mouseX, [-150, 150], [-8, 8]), { stiffness: 150, damping: 20 });
+  const glowOpacity = useSpring(0, { stiffness: 200, damping: 30 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    mouseX.set(e.clientX - centerX);
+    mouseY.set(e.clientY - centerY);
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const id = Date.now();
+    setRipples((prev) => [...prev, { id, x, y }]);
+    setTimeout(() => setRipples((prev) => prev.filter((r) => r.id !== id)), 800);
+  };
+
+  return (
+    <motion.div
+      className="absolute right-4 bottom-4 top-4 w-[50%] max-w-[420px] flex items-center justify-center cursor-grab active:cursor-grabbing"
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        glowOpacity.set(1);
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        mouseX.set(0);
+        mouseY.set(0);
+        glowOpacity.set(0);
+      }}
+      onClick={handleClick}
+      style={{ perspective: 600 }}
+    >
+      {/* Glow effect */}
+      <motion.div
+        className="absolute inset-0 rounded-full bg-amber-400/20 blur-3xl"
+        style={{ opacity: glowOpacity }}
+      />
+
+      {/* Ripple effects on click */}
+      <AnimatePresence>
+        {ripples.map((ripple) => (
+          <motion.div
+            key={ripple.id}
+            className="absolute rounded-full border-2 border-amber-400/50 pointer-events-none"
+            style={{ left: ripple.x, top: ripple.y, x: "-50%", y: "-50%" }}
+            initial={{ width: 0, height: 0, opacity: 0.8 }}
+            animate={{ width: 120, height: 120, opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+          />
+        ))}
+      </AnimatePresence>
+
+      {/* Sparkle particles on hover */}
+      <AnimatePresence>
+        {isHovered &&
+          [0, 1, 2, 3, 4].map((i) => (
+            <motion.div
+              key={`sparkle-${i}`}
+              className="absolute pointer-events-none"
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{
+                opacity: [0, 1, 0],
+                scale: [0, 1, 0],
+                x: [0, (i % 2 === 0 ? 1 : -1) * (20 + i * 15)],
+                y: [0, -30 - i * 12],
+              }}
+              transition={{ duration: 1.2, delay: i * 0.15, repeat: Infinity, repeatDelay: 0.5 }}
+              style={{
+                right: `${30 + i * 10}%`,
+                top: `${20 + i * 8}%`,
+              }}
+            >
+              <Sparkles className="w-4 h-4 text-amber-400" />
+            </motion.div>
+          ))}
+      </AnimatePresence>
+
+      {/* The mango image */}
+      <motion.img
+        src={heroMango}
+        alt="Premium Pakistani Mango — click or hover to interact"
+        className="w-full h-full object-contain pointer-events-none select-none drop-shadow-2xl"
+        width={800}
+        height={800}
+        initial={{ opacity: 0, scale: 0.85 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.3, duration: 0.8, type: "spring" }}
+        style={{
+          rotateX,
+          rotateY,
+        }}
+        whileHover={{ scale: 1.04 }}
+      />
+
+      {/* Tooltip on hover */}
+      <AnimatePresence>
+        {isHovered && (
+          <motion.div
+            className="absolute -top-2 left-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-full whitespace-nowrap pointer-events-none"
+            initial={{ opacity: 0, y: 8, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.2 }}
+          >
+            🥭 Click me!
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
+
 /* ── Hero Section (Right) ── */
 const HeroSection = () => (
   <motion.div
@@ -137,34 +266,32 @@ const HeroSection = () => (
       >
         <Link
           to="/products"
-          className="inline-flex items-center gap-2 bg-[hsl(85,30%,30%)] hover:bg-[hsl(85,30%,25%)] text-white px-7 py-3.5 rounded-lg font-semibold text-base transition-all duration-300 hover:shadow-lg hover:shadow-green-900/20"
+          className="group inline-flex items-center gap-2 bg-[hsl(85,30%,30%)] hover:bg-[hsl(85,30%,25%)] text-white px-7 py-3.5 rounded-lg font-semibold text-base transition-all duration-300 hover:shadow-lg hover:shadow-green-900/20"
         >
-          Shop Now <ArrowUpRight className="w-4 h-4" />
+          Shop Now
+          <motion.span
+            className="inline-block"
+            whileHover={{ x: 3, y: -3 }}
+            transition={{ type: "spring", stiffness: 400 }}
+          >
+            <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </motion.span>
         </Link>
       </motion.div>
     </div>
 
-    {/* Hero Mango Image */}
-    <motion.img
-      src={heroMango}
-      alt="Premium Pakistani Mango"
-      className="absolute right-0 top-1/2 -translate-y-1/2 w-[55%] max-w-[450px] object-contain pointer-events-none"
-      width={800}
-      height={800}
-      initial={{ opacity: 0, scale: 0.9, x: 40 }}
-      animate={{ opacity: 1, scale: 1, x: 0 }}
-      transition={{ delay: 0.3, duration: 0.8 }}
-      style={{ animation: "float 6s ease-in-out infinite" }}
-    />
+    {/* Interactive Hero Mango Image */}
+    <InteractiveMangoImage />
 
     {/* 100% Original Badge */}
     <motion.div
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: 0.7, duration: 0.4 }}
-      className="absolute top-8 right-8 md:top-12 md:right-16"
+      whileHover={{ scale: 1.1, rotate: 10 }}
+      className="absolute top-8 right-8 md:top-12 md:right-16 z-20 cursor-pointer"
     >
-      <div className="bg-[hsl(85,30%,30%)] text-white rounded-full w-16 h-16 flex flex-col items-center justify-center text-[10px] font-bold leading-tight">
+      <div className="bg-[hsl(85,30%,30%)] text-white rounded-full w-16 h-16 flex flex-col items-center justify-center text-[10px] font-bold leading-tight shadow-lg">
         <span className="text-xs">100%</span>
         <CheckCircle className="w-4 h-4 mt-0.5" />
         <span>Original</span>
@@ -176,11 +303,11 @@ const HeroSection = () => (
 /* ── Bottom Stats Section ── */
 const StatsSection = () => (
   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-    {/* Left stats */}
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5, duration: 0.5 }}
+      whileHover={{ scale: 1.02 }}
       className="bg-[hsl(85,20%,40%)] rounded-2xl p-6 text-white relative overflow-hidden"
     >
       <p className="text-4xl font-black text-amber-300">2390+</p>
@@ -200,14 +327,12 @@ const StatsSection = () => (
       </div>
     </motion.div>
 
-    {/* Right cards */}
     <div className="space-y-4">
-      {/* Trusted User */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6, duration: 0.5 }}
-        whileHover={{ y: -3 }}
+        whileHover={{ y: -3, boxShadow: "0 8px 25px -6px rgba(0,0,0,0.1)" }}
         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"
       >
         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-300 to-amber-500" />
@@ -220,7 +345,6 @@ const StatsSection = () => (
         </button>
       </motion.div>
 
-      {/* Mango Magic card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -255,14 +379,11 @@ const Index = () => {
     <div className="bg-[hsl(40,20%,95%)] min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-6 md:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
-          {/* Left Column */}
           <div className="flex flex-col gap-4">
             <ProductCard />
             <AboutCard />
             <ReviewsCard />
           </div>
-
-          {/* Right Column */}
           <div className="flex flex-col gap-4">
             <HeroSection />
             <StatsSection />
