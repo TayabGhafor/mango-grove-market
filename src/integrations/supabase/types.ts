@@ -16,40 +16,40 @@ export type Database = {
     Tables: {
       order_items: {
         Row: {
-          image: string
           id: string
+          image: string
           order_id: string
           product_id: string | null
           quantity: number
           subtotal: number
           title: string
           unit_price: number
-          weight_label: string
           weight_kg: number
+          weight_label: string
         }
         Insert: {
-          image: string
           id?: string
+          image?: string
           order_id: string
           product_id?: string | null
           quantity?: number
           subtotal?: number
           title: string
-          unit_price: number
-          weight_label: string
-          weight_kg: number
+          unit_price?: number
+          weight_kg?: number
+          weight_label?: string
         }
         Update: {
-          image?: string
           id?: string
+          image?: string
           order_id?: string
           product_id?: string | null
           quantity?: number
           subtotal?: number
           title?: string
           unit_price?: number
-          weight_label?: string
           weight_kg?: number
+          weight_label?: string
         }
         Relationships: [
           {
@@ -74,7 +74,7 @@ export type Database = {
           customer: Json
           id: string
           payment: Json
-          status: Database["public"]["Enums"]["order_status"]
+          status: string
           total: number
           updated_at: string
           user_id: string
@@ -84,7 +84,7 @@ export type Database = {
           customer?: Json
           id?: string
           payment?: Json
-          status?: Database["public"]["Enums"]["order_status"]
+          status?: string
           total?: number
           updated_at?: string
           user_id: string
@@ -94,7 +94,7 @@ export type Database = {
           customer?: Json
           id?: string
           payment?: Json
-          status?: Database["public"]["Enums"]["order_status"]
+          status?: string
           total?: number
           updated_at?: string
           user_id?: string
@@ -190,19 +190,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      is_admin: {
-        Args: { uid: string }
-        Returns: boolean
-      }
+      is_admin: { Args: { uid: string }; Returns: boolean }
     }
     Enums: {
-      order_status:
-        | "pending"
-        | "processed"
-        | "dispatched"
-        | "out-for-delivery"
-        | "delivered"
-        | "cancelled"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -329,15 +320,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      order_status: [
-        "pending",
-        "processed",
-        "dispatched",
-        "out-for-delivery",
-        "delivered",
-        "cancelled",
-      ],
-    },
+    Enums: {},
   },
 } as const
