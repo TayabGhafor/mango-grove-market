@@ -10,11 +10,12 @@ const Navbar = () => {
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+
   const navLinks = [
     { to: "/", label: "Home" },
     { to: "/products", label: "Shop" },
-    { to: "/search", label: "Orchards" },
-    { to: "/orders", label: "Our Story" },
+    { to: "/search", label: "Our Story" },
+    { to: "/orders", label: "Freshness" },
   ];
 
   const handleLogoClick = () => {
@@ -23,18 +24,20 @@ const Navbar = () => {
 
   return (
     <nav className="sticky top-0 z-50 border-b border-[#e9e5dd] bg-[#f4f2ef]/95 backdrop-blur">
-      <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-4 md:px-6">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 md:px-6">
         <button type="button" onClick={handleLogoClick} className="flex items-center gap-2 text-left">
-          <span className="font-display text-[1.55rem] font-bold text-[#1f1f1f]">Mango Grove</span>
+          <span className="font-display text-xl font-bold italic text-[#8b4513]">Royal Orchard</span>
         </button>
 
-        <div className="hidden items-center gap-8 md:flex">
+        <div className="hidden items-center gap-7 md:flex">
           {navLinks.map((link) => (
             <Link
               key={link.to}
               to={link.to}
-              className={`text-[15px] font-medium transition-colors ${
-                location.pathname === link.to ? "text-[#191919] underline underline-offset-8" : "text-[#6c6c6c] hover:text-[#1f1f1f]"
+              className={`text-[14px] font-medium transition-colors ${
+                location.pathname === link.to
+                  ? "text-[#191919] underline underline-offset-8 decoration-2"
+                  : "text-[#6c6c6c] hover:text-[#1f1f1f]"
               }`}
             >
               {link.label}
@@ -43,17 +46,17 @@ const Navbar = () => {
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
-          <div className="flex items-center gap-2 rounded-full bg-[#efeeea] px-4 py-2 text-[#8b8b8b]">
+          <Link to="/search" className="flex items-center gap-2 rounded-full bg-[#efeeea] px-4 py-2 text-[#8b8b8b] transition-colors hover:bg-[#e8e6e0]">
             <Search className="h-4 w-4" />
             <span className="text-sm">Search our harvest...</span>
-          </div>
+          </Link>
           <Link to="/cart" className="relative rounded-full p-2 text-[#6b5a40] transition-colors hover:bg-[#ebe8e2]">
             <ShoppingCart className="h-5 w-5" />
-            {itemCount > 0 ? (
+            {itemCount > 0 && (
               <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#d39a17] text-[10px] font-bold text-white">
                 {itemCount}
               </span>
-            ) : null}
+            )}
           </Link>
           {user ? (
             <div className="flex items-center gap-2">
@@ -65,8 +68,8 @@ const Navbar = () => {
               </button>
             </div>
           ) : (
-            <Link to="/login" className="rounded-full bg-[#201f1c] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-black">
-              Sign In
+            <Link to="/login" className="rounded-full bg-[#201f1c] p-2 text-white transition-colors hover:bg-black">
+              <User className="h-4 w-4" />
             </Link>
           )}
         </div>
@@ -74,11 +77,11 @@ const Navbar = () => {
         <div className="flex items-center gap-2 md:hidden">
           <Link to="/cart" className="relative rounded-full p-2">
             <ShoppingCart className="h-5 w-5" />
-            {itemCount > 0 ? (
+            {itemCount > 0 && (
               <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#d39a17] text-[10px] font-bold text-white">
                 {itemCount}
               </span>
-            ) : null}
+            )}
           </Link>
           <button onClick={() => setMobileOpen(!mobileOpen)} className="rounded-full p-2">
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -100,13 +103,9 @@ const Navbar = () => {
                   {link.label}
                 </Link>
               ))}
-              {user ? <Link to="/profile" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium text-[#404040]">Profile</Link> : null}
+              {user && <Link to="/profile" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium text-[#404040]">Profile</Link>}
               {user ? (
-                <button
-                  type="button"
-                  onClick={() => { setMobileOpen(false); void logout(); }}
-                  className="py-2 text-left text-sm font-medium text-[#404040]"
-                >
+                <button type="button" onClick={() => { setMobileOpen(false); void logout(); }} className="py-2 text-left text-sm font-medium text-[#404040]">
                   Sign out
                 </button>
               ) : (

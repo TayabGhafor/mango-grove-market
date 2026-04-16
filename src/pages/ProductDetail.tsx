@@ -32,10 +32,7 @@ const ProductDetail = () => {
         queryClient.invalidateQueries({ queryKey: ["products"], exact: false });
       })
       .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+    return () => { void supabase.removeChannel(channel); };
   }, [id, queryClient]);
 
   const cached = (location.state as { product?: Product } | null)?.product;
@@ -65,19 +62,19 @@ const ProductDetail = () => {
 
   return (
     <div className="container mx-auto px-4 py-10">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6">
-        <ArrowLeft className="w-4 h-4" /> Back
+      <button onClick={() => navigate(-1)} className="mb-6 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-4 w-4" /> Back
       </button>
-      <div className="grid md:grid-cols-2 gap-10">
+      <div className="grid gap-10 md:grid-cols-2">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <div className="aspect-square rounded-2xl overflow-hidden bg-muted mb-3">
+          <div className="mb-3 aspect-square overflow-hidden rounded-2xl bg-muted">
             <img
               src={product.images[selectedImage]}
               alt={product.title}
-              className="w-full h-full object-cover"
+              className="h-full w-full object-cover"
               decoding="async"
               loading="eager"
-              fetchpriority="high"
+              fetchPriority="high"
             />
           </div>
           <div className="flex gap-2">
@@ -85,9 +82,9 @@ const ProductDetail = () => {
               <button
                 key={i}
                 onClick={() => setSelectedImage(i)}
-                className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${i === selectedImage ? "border-primary" : "border-border"}`}
+                className={`h-16 w-16 overflow-hidden rounded-lg border-2 transition-colors ${i === selectedImage ? "border-primary" : "border-border"}`}
               >
-                <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                <img src={img} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
               </button>
             ))}
           </div>
@@ -95,29 +92,29 @@ const ProductDetail = () => {
 
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
           {product.deal && (
-            <span className="inline-block px-3 py-1 rounded-full bg-gradient-mango text-xs font-bold text-primary-foreground mb-3">
+            <span className="mb-3 inline-block rounded-full bg-gradient-mango px-3 py-1 text-xs font-bold text-primary-foreground">
               {product.deal.label} — {product.deal.discount}% OFF
             </span>
           )}
           <h1 className="font-display text-3xl font-bold">{product.title}</h1>
-          <div className="flex items-center gap-2 mt-2">
+          <div className="mt-2 flex items-center gap-2">
             <div className="flex gap-0.5">
               {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className={`w-4 h-4 ${i < Math.round(product.rating) ? "fill-primary text-primary" : "text-muted"}`} />
+                <Star key={i} className={`h-4 w-4 ${i < Math.round(product.rating) ? "fill-primary text-primary" : "text-muted"}`} />
               ))}
             </div>
             <span className="text-sm text-muted-foreground">({product.reviews} reviews)</span>
           </div>
-          <p className="text-muted-foreground mt-4">{product.description}</p>
+          <p className="mt-4 text-muted-foreground">{product.description}</p>
 
           <div className="mt-6">
-            <h3 className="font-medium text-sm mb-2">Select Weight</h3>
+            <h3 className="mb-2 text-sm font-medium">Select Weight</h3>
             <div className="flex gap-2">
               {product.weights.map((w, i) => (
                 <button
                   key={w.kg}
                   onClick={() => setSelectedWeight(i)}
-                  className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                  className={`rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
                     i === selectedWeight
                       ? "border-primary bg-primary/10 text-foreground"
                       : "border-border text-muted-foreground hover:border-primary/50"
@@ -130,13 +127,13 @@ const ProductDetail = () => {
           </div>
 
           <div className="mt-6 flex items-center gap-4">
-            <div className="flex items-center border border-border rounded-lg">
-              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-2 hover:bg-muted rounded-l-lg">
-                <Minus className="w-4 h-4" />
+            <div className="flex items-center rounded-lg border border-border">
+              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="rounded-l-lg p-2 hover:bg-muted">
+                <Minus className="h-4 w-4" />
               </button>
               <span className="px-4 font-medium">{quantity}</span>
-              <button onClick={() => setQuantity(quantity + 1)} className="p-2 hover:bg-muted rounded-r-lg">
-                <Plus className="w-4 h-4" />
+              <button onClick={() => setQuantity(quantity + 1)} className="rounded-r-lg p-2 hover:bg-muted">
+                <Plus className="h-4 w-4" />
               </button>
             </div>
             <span className="text-2xl font-bold">Rs. {(weight.price * quantity).toLocaleString()}</span>
@@ -144,10 +141,10 @@ const ProductDetail = () => {
 
           <Button
             size="lg"
-            className="mt-6 bg-gradient-mango hover:opacity-90 text-primary-foreground font-semibold shadow-mango w-full md:w-auto"
+            className="mt-6 w-full bg-gradient-mango font-semibold text-primary-foreground shadow-mango hover:opacity-90 md:w-auto"
             onClick={() => addToCart(product, weight, quantity)}
           >
-            <ShoppingCart className="mr-2 w-5 h-5" /> Add to Cart
+            <ShoppingCart className="mr-2 h-5 w-5" /> Add to Cart
           </Button>
         </motion.div>
       </div>

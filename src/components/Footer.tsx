@@ -1,43 +1,26 @@
 import { Link } from "react-router-dom";
 
 const Footer = () => (
-  <footer className="bg-foreground/5 border-t border-border mt-16">
-    <div className="container mx-auto px-4 py-12">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-2xl">🥭</span>
-            <span className="font-display text-lg font-bold text-gradient-mango">MangoMart</span>
-          </div>
-          <p className="text-sm text-muted-foreground">Premium Pakistani mangoes delivered fresh to your doorstep.</p>
-        </div>
-        <div>
-          <h4 className="font-display font-semibold mb-3">Shop</h4>
-          <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-            <Link to="/products" className="hover:text-foreground transition-colors">All Mangoes</Link>
-            <Link to="/search" className="hover:text-foreground transition-colors">Search</Link>
-            <Link to="/cart" className="hover:text-foreground transition-colors">Cart</Link>
-          </div>
-        </div>
-        <div>
-          <h4 className="font-display font-semibold mb-3">Support</h4>
-          <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-            <span>help@mangomart.pk</span>
-            <span>+92 300 1234567</span>
-          </div>
-        </div>
-        <div>
-          <h4 className="font-display font-semibold mb-3">Payment Methods</h4>
-          <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-            <span className="px-2 py-1 rounded bg-muted">COD</span>
-            <span className="px-2 py-1 rounded bg-muted">Easypaisa</span>
-            <span className="px-2 py-1 rounded bg-muted">JazzCash</span>
-            <span className="px-2 py-1 rounded bg-muted">Card</span>
-          </div>
+  <footer className="border-t border-[#e2ded6] bg-[#eae7e1] px-4 py-10 md:px-6">
+    <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-4">
+      <div>
+        <h3 className="font-display text-lg font-bold uppercase tracking-wider text-[#8b4513]">Mango Grove</h3>
+        <p className="mt-2 text-xs text-[#777]">
+          Crafting the world's finest tropical experience through sustainable farming and artisanal selection.
+        </p>
+      </div>
+      <div className="md:col-span-2">
+        <div className="flex flex-wrap gap-6 text-xs text-[#777]">
+          <span>Privacy Policy</span>
+          <span>Shipping Info</span>
+          <span>Sustainability Report</span>
+          <Link to="/products" className="hover:text-[#1a1a1a]">Contact Us</Link>
+          <Link to="/products" className="hover:text-[#1a1a1a]">Wholesale</Link>
         </div>
       </div>
-      <div className="border-t border-border mt-8 pt-6 text-center text-xs text-muted-foreground">
-        © 2026 MangoMart. All rights reserved.
+      <div className="text-right text-xs text-[#999]">
+        <p>© 2024 Mango Grove Editorial.</p>
+        <p className="italic">Sustainable. Organic. Artisanal.</p>
       </div>
     </div>
   </footer>
