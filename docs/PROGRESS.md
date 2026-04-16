@@ -1,6 +1,6 @@
 # Mango Grove Market Progress Tracker
 
-Last updated: 2026-04-10
+Last updated: 2026-04-16
 
 This file is the source of truth for feature progress. Before changing a feature, check this file. After changing a feature, update the relevant row with implementation status, verification, responsive coverage, and security/data validation notes.
 
@@ -24,9 +24,11 @@ This file is the source of truth for feature progress. Before changing a feature
 | Area | Feature | Current status | Data/security checks | Verification |
 | --- | --- | --- | --- | --- |
 | Customer UI | Homepage hero | Partial | Static content and remote images only | Storefront build passed; mobile/desktop screenshots captured |
+| Customer UI | Homepage hero (reference redesign) | Done | Hero/navigation rebuilt to match provided reference style; logo click forces hard reload to `/` | Pending final full-app run after auth/shop updates |
 | Customer UI | Deals/new products carousel | Partial | Implemented as grid from mock product deals, not a true carousel/API feed | Storefront build passed; mobile/desktop screenshots captured |
 | Customer UI | Recommended/trending mangoes | Partial | Uses static `trending` flags, not order-derived analytics | Storefront build passed |
 | Customer UI | Product listing | Partial | Supabase `products` table is source of truth; falls back to mock data if Supabase is unavailable or empty | Storefront build/test passed |
+| Customer UI | Shop page reference redesign | Done | Reworked `/products` layout to match provided reference structure with quick-add hooks to cart and product detail links | Pending final full-app run after auth updates |
 | Customer UI | Product detail with image slider and weight selection | Partial | Supabase `products` table is source of truth; falls back to mock data for legacy ids | Storefront build/test passed |
 | Customer UI | Search with real-time filtering | Partial | Supabase `ilike` search on products; falls back to client-side search on mock data | Storefront build/test passed |
 | Customer UI | Cart add/update/remove | Partial | Quantity is clamped to 1-99 client-side; no server-side stock check yet | Storefront tests passed |
@@ -42,6 +44,8 @@ This file is the source of truth for feature progress. Before changing a feature
 | Admin | Order management/status updates | Partial | Admin can update order status in Supabase; customer orders view updates in realtime | Admin build passed; Supabase required |
 | Admin | User management | Partial | Admin can list `profiles` (name/email/role) via Supabase RLS | Admin build passed; Supabase required |
 | Auth | Email/password signup/login (Supabase) | Partial | Supabase Auth + `profiles` table; profile upserted on signup and editable by user | Storefront build/test passed; Supabase required |
+| Auth | Login/signup reference redesign | Done | `/login` and `/signup` now mirror provided layouts; signup enforces confirm-password before submission | Pending final full-app run |
+| API | User profile management endpoint | Done | Added protected `GET /api/users/me` and `PATCH /api/users/me`; validates updates with schema and stores `phone`/`address` in DB | Pending server test run |
 | Auth | Role-based admin/user access (Supabase RLS) | Partial | Admin operations gated by `profiles.role='admin'` and RLS policies; requires admin user role to be set | Storefront/admin build passed; Supabase required |
 | Images | Cloudinary product image upload | Partial | Backend admin-only upload route allows 2-5 JPEG/PNG/WEBP files, 5 MB each | Not verified without Cloudinary credentials |
 | API | RESTful operations | Partial | Product, order, payment, upload, user, auth, and health routes scaffolded | Backend health/auth/payment tests passed; DB integration pending |
@@ -56,6 +60,10 @@ This file is the source of truth for feature progress. Before changing a feature
 
 ## Update Log
 
+- 2026-04-16: Rebuilt storefront navbar and homepage to align with provided reference screens, added explicit `Home` menu item, and updated logo click behavior to force homepage reload.
+- 2026-04-16: Rebuilt `/products` page to match the provided shop reference style (filter rail, featured cards, and compact variety grid) while keeping live Supabase product data.
+- 2026-04-16: Redesigned `/login` and `/signup` pages to match provided references and added client-side confirm-password validation.
+- 2026-04-16: Extended backend profile management with `GET /api/users/me` and `PATCH /api/users/me` endpoints, schema validation, and persisted profile fields (`phone`, `address`) on user model.
 - 2026-04-10: Audited the existing app. Found a polished mock storefront but no MERN backend, no real auth, no database persistence, no Cloudinary integration, no payment verification, and no separate admin deployment.
 - 2026-04-10: Added this progress tracker so future work records feature status, validation, responsive checks, security checks, and tests.
 - 2026-04-10: Added stricter storefront checkout validation and cart quantity/weight guards.

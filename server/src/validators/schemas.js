@@ -15,6 +15,12 @@ export const loginSchema = z.object({
   password: z.string().min(8).max(128),
 });
 
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(2).max(80).optional(),
+  phone: z.string().trim().regex(pakistanPhoneRegex).optional(),
+  address: z.string().trim().min(10).max(220).optional(),
+}).refine((payload) => Object.keys(payload).length > 0, "Provide at least one field.");
+
 const weightSchema = z.object({
   label: z.enum(["3 KG", "5 KG", "8 KG"]),
   kg: z.union([z.literal(3), z.literal(5), z.literal(8)]),

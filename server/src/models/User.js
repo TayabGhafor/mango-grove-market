@@ -28,6 +28,16 @@ const userSchema = new mongoose.Schema({
     enum: ["user", "admin"],
     default: "user",
   },
+  phone: {
+    type: String,
+    trim: true,
+    default: "",
+  },
+  address: {
+    type: String,
+    trim: true,
+    default: "",
+  },
 }, { timestamps: true });
 
 userSchema.pre("save", async function hashPassword(next) {

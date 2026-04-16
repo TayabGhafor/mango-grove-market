@@ -1,85 +1,87 @@
-import { Link } from "react-router-dom";
-import { ShoppingCart, Search, Menu, X, ArrowRight } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { ShoppingCart, Search, Menu, X, User, LogOut } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 const Navbar = () => {
   const { itemCount } = useCart();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+  const navLinks = [
+    { to: "/", label: "Home" },
+    { to: "/products", label: "Shop" },
+    { to: "/search", label: "Orchards" },
+    { to: "/orders", label: "Our Story" },
+  ];
+
+  const handleLogoClick = () => {
+    window.location.assign("/");
+  };
 
   return (
-    <nav className="sticky top-0 z-50 bg-[hsl(40,20%,95%)]/80 backdrop-blur-lg border-b border-gray-200/50">
-      <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-[hsl(85,30%,30%)] flex items-center justify-center">
-            <span className="text-white text-sm font-bold">R</span>
-          </div>
-          <span className="font-display text-xl font-bold text-gray-900">RoyalOrchard.</span>
-        </Link>
+    <nav className="sticky top-0 z-50 border-b border-[#e9e5dd] bg-[#f4f2ef]/95 backdrop-blur">
+      <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-4 md:px-6">
+        <button type="button" onClick={handleLogoClick} className="flex items-center gap-2 text-left">
+          <span className="font-display text-[1.55rem] font-bold text-[#1f1f1f]">Mango Grove</span>
+        </button>
 
-        {/* Desktop Nav - Center */}
-        <div className="hidden md:flex items-center gap-8">
-          <Link to="/products" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-            Mangoes ▾
-          </Link>
-          <Link to="/search" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-            Varieties ▾
-          </Link>
-          <Link to="/orders" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-            About ▾
-          </Link>
-          <Link to="/search" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-            Reviews
-          </Link>
+        <div className="hidden items-center gap-8 md:flex">
+          {navLinks.map((link) => (
+            <Link
+              key={link.to}
+              to={link.to}
+              className={`text-[15px] font-medium transition-colors ${
+                location.pathname === link.to ? "text-[#191919] underline underline-offset-8" : "text-[#6c6c6c] hover:text-[#1f1f1f]"
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
         </div>
 
-        {/* Desktop Right */}
-        <div className="hidden md:flex items-center gap-3">
-          <Link to="/search" className="p-2 rounded-full hover:bg-gray-200/50 transition-colors">
-            <Search className="w-4 h-4 text-gray-500" />
-          </Link>
-          <Link to="/cart" className="relative p-2 rounded-full hover:bg-gray-200/50 transition-colors">
-            <ShoppingCart className="w-4 h-4 text-gray-500" />
-            {itemCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
+        <div className="hidden items-center gap-3 md:flex">
+          <div className="flex items-center gap-2 rounded-full bg-[#efeeea] px-4 py-2 text-[#8b8b8b]">
+            <Search className="h-4 w-4" />
+            <span className="text-sm">Search our harvest...</span>
+          </div>
+          <Link to="/cart" className="relative rounded-full p-2 text-[#6b5a40] transition-colors hover:bg-[#ebe8e2]">
+            <ShoppingCart className="h-5 w-5" />
+            {itemCount > 0 ? (
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#d39a17] text-[10px] font-bold text-white">
                 {itemCount}
               </span>
-            )}
+            ) : null}
           </Link>
           {user ? (
-            <button
-              type="button"
-              onClick={() => void logout()}
-              className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
-            >
-              Sign out
-            </button>
+            <div className="flex items-center gap-2">
+              <Link to="/profile" className="rounded-full bg-[#e9e7e2] p-2 text-[#5f5f5f] transition-colors hover:bg-[#ddd8cf]">
+                <User className="h-4 w-4" />
+              </Link>
+              <button type="button" onClick={() => void logout()} className="rounded-full bg-[#f7e2b1] p-2 text-[#6c4c0a] transition-colors hover:bg-[#f3d694]">
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
           ) : (
-            <Link
-              to="/login"
-              className="w-9 h-9 rounded-full bg-gray-900 flex items-center justify-center hover:bg-gray-800 transition-colors"
-            >
-              <ArrowRight className="w-4 h-4 text-white" />
+            <Link to="/login" className="rounded-full bg-[#201f1c] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-black">
+              Sign In
             </Link>
           )}
         </div>
 
-        {/* Mobile */}
-        <div className="flex md:hidden items-center gap-2">
-          <Link to="/cart" className="relative p-2">
-            <ShoppingCart className="w-5 h-5" />
-            {itemCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
+        <div className="flex items-center gap-2 md:hidden">
+          <Link to="/cart" className="relative rounded-full p-2">
+            <ShoppingCart className="h-5 w-5" />
+            {itemCount > 0 ? (
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#d39a17] text-[10px] font-bold text-white">
                 {itemCount}
               </span>
-            )}
+            ) : null}
           </Link>
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2">
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          <button onClick={() => setMobileOpen(!mobileOpen)} className="rounded-full p-2">
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
       </div>
@@ -90,24 +92,25 @@ const Navbar = () => {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="md:hidden border-t border-gray-200 overflow-hidden bg-[hsl(40,20%,95%)]"
+            className="overflow-hidden border-t border-[#e9e5dd] bg-[#f4f2ef] md:hidden"
           >
-            <div className="flex flex-col p-4 gap-3">
-              <Link to="/" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium">Home</Link>
-              <Link to="/products" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium">Mangoes</Link>
-              <Link to="/search" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium">Search</Link>
-              <Link to="/orders" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium">My Orders</Link>
-              {user && <Link to="/profile" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium">Profile</Link>}
+            <div className="flex flex-col gap-3 p-4">
+              {navLinks.map((link) => (
+                <Link key={link.to} to={link.to} onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium text-[#404040]">
+                  {link.label}
+                </Link>
+              ))}
+              {user ? <Link to="/profile" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium text-[#404040]">Profile</Link> : null}
               {user ? (
                 <button
                   type="button"
                   onClick={() => { setMobileOpen(false); void logout(); }}
-                  className="py-2 text-sm font-medium text-left"
+                  className="py-2 text-left text-sm font-medium text-[#404040]"
                 >
                   Sign out
                 </button>
               ) : (
-                <Link to="/login" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium">Sign in</Link>
+                <Link to="/login" onClick={() => setMobileOpen(false)} className="py-2 text-sm font-medium text-[#404040]">Sign in</Link>
               )}
             </div>
           </motion.div>

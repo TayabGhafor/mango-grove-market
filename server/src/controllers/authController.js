@@ -6,6 +6,8 @@ const publicUser = (user) => ({
   name: user.name,
   email: user.email,
   role: user.role,
+  phone: user.phone ?? "",
+  address: user.address ?? "",
 });
 
 const sendAuthResponse = (user, statusCode, res) => {
