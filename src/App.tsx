@@ -68,7 +68,7 @@ const App = () => (
           <BrowserRouter>
             <Suspense
               fallback={
-                <div className="container mx-auto px-4 py-16 text-center text-muted-foreground text-sm">
+                <div className="container mx-auto px-4 py-16 text-center text-sm text-muted-foreground">
                   Loading...
                 </div>
               }
